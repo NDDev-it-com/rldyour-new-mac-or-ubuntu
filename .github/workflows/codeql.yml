@@ -18,9 +18,14 @@ concurrency:
 
 jobs:
   analyze:
-    name: codeql-analysis-python
+    name: codeql-analysis-actions
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - actions
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -28,8 +33,10 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@8533807ff379ac610d2b2c389c47e7c629d31d13
         with:
-          languages: python
+          languages: ${{ matrix.language }}
           queries: security-and-quality
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@8533807ff379ac610d2b2c389c47e7c629d31d13
+        with:
+          category: "/language:${{ matrix.language }}"
