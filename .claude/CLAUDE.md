@@ -47,6 +47,12 @@ for dependency and verification parity across workstation classes.
   - `bash scripts/ubuntu/verify.sh --strict --skip-optional`
 - Full CI preflight:
   - `bash scripts/ci/validate.sh`
+- CI workflow dispatch:
+  - `platform=both|macos|ubuntu`
+  - `mode=plan|apply`
+- Manual examples:
+  - `gh workflow run .github/workflows/ci.yml -f mode=plan -f platform=both`
+  - `gh workflow run .github/workflows/ci.yml -f mode=apply -f platform=macos`
 
 ## Troubleshooting Notes
 
