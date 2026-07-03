@@ -38,8 +38,8 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - Public security workflows remain enabled for the public repository posture.
 
 ## Current State
-- Current product/config version is `0.1.2`.
-- Release `0.1.2` synchronizes `VERSION`, README baseline, SECURITY current exact tag, and `config/rldyour-contract.json` after the contract baseline drift fixed by `a3dc4e0`.
+- Current product/config version is `0.1.3`.
+- Release `0.1.3` synchronizes `VERSION`, README baseline, SECURITY current exact tag, and `config/rldyour-contract.json` after the contract baseline drift fixed by `a3dc4e0`.
 - The module supports macOS and Ubuntu/server bootstrap profiles.
 - Local CI entrypoints are `bash scripts/ci/lint.sh` and `bash scripts/ci/validate.sh`.
 - Strict platform checks are `bash scripts/macos/verify.sh --strict --skip-optional` and `bash scripts/ubuntu/verify.sh --strict --skip-optional`.
