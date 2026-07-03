@@ -73,6 +73,7 @@ the owner terminal stack:
 
 - GitHub Actions matrix:
   - `ubuntu-latest`, `macos-latest`
+  - runs `bash scripts/ci/lint.sh`
   - runs `bash scripts/ci/validate.sh`
   - runs platform checks with:
     - `mode=plan`: `--plan --skip-checks`
@@ -85,6 +86,7 @@ the owner terminal stack:
   - `gh workflow run .github/workflows/ci.yml -f mode=plan -f platform=both`
   - `gh workflow run .github/workflows/ci.yml -f mode=apply -f platform=macos`
 - Always run before merge:
+  - `bash scripts/ci/lint.sh`
   - `bash scripts/ci/validate.sh`
   - platform plan runs (`--plan`) for both macOS and Ubuntu
 

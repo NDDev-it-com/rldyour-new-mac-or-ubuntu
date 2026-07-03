@@ -47,6 +47,7 @@ bash scripts/bootstrap.sh --platform ubuntu
 │   │   ├── install.sh
 │   │   └── verify.sh
 │   └── ci/
+│       ├── lint.sh
 │       └── validate.sh
 ├── docs/
 │   └── install.md
@@ -84,6 +85,7 @@ bash scripts/bootstrap.sh --platform ubuntu --plan --skip-checks
 
 ## Проверки
 
+- `bash scripts/ci/lint.sh` — shell syntax + `shellcheck` для всех ключевых bootstrap-скриптов
 - `bash scripts/ci/validate.sh` — синтаксис + shellcheck + контракт + плановые dry-run для macOS и Ubuntu
 - `bash scripts/macos/verify.sh [--strict] [--skip-optional]`
 - `bash scripts/ubuntu/verify.sh [--strict] [--skip-optional]`

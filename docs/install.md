@@ -7,6 +7,7 @@
 - `bash scripts/bootstrap.sh --platform macos --apply`
 - `bash scripts/bootstrap.sh --platform ubuntu --apply`
 - `bash scripts/ci/validate.sh` (CI-safe check)
+- `bash scripts/ci/lint.sh` (shell syntax + shellcheck for all installer scripts)
 
 ## 2) Наборы зависимостей
 
@@ -127,6 +128,7 @@ CI для модуля:
 - триггеры: `push` в `main`, `pull_request`, `workflow_dispatch`
 - матрица: `ubuntu-latest`, `macos-latest`
 - шаги:
+  - `bash scripts/ci/lint.sh`
   - `bash scripts/ci/validate.sh` (syntax + shellcheck + contract + plan-run)
   - запуск `bootstrap.sh` через матричный шаг для `${{ matrix.platform }}`:
     - `mode=plan`: `bash scripts/bootstrap.sh --platform ${{matrix.platform}} --plan --skip-checks`
