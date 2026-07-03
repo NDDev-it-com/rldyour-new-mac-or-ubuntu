@@ -17,6 +17,7 @@ for dependency and verification parity across workstation classes.
 - `scripts/macos/install.sh` and `scripts/macos/verify.sh` — macOS baseline setup.
 - `scripts/ubuntu/install.sh` and `scripts/ubuntu/verify.sh` — Ubuntu baseline setup.
 - `scripts/ci/validate.sh` — lint + contract + dry-run matrix preflight.
+- `scripts/ci/lint.sh` — shell syntax + shellcheck for bootstrap scripts.
 - `docs/install.md` — OS dependency matrix and CI notes.
 - `config/rldyour-contract.json` — module contract and adapter metadata.
 
@@ -47,6 +48,7 @@ for dependency and verification parity across workstation classes.
   - `bash scripts/ubuntu/verify.sh --strict --skip-optional`
 - Full CI preflight:
   - `bash scripts/ci/validate.sh`
+  - `bash scripts/ci/lint.sh`
 - CI workflow dispatch:
   - `platform=both|macos|ubuntu`
   - `mode=plan|apply`
