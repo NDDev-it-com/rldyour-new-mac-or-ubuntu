@@ -6,6 +6,8 @@ All notable changes to this module will be documented in this file.
 
 ### Fixed
 
+- Fixed Ubuntu installer parity to install `marksman` in the LSP layer, matching
+  `verify.sh` contract and macOS behavior.
 - Corrected dependency-check and release workflow behavior for pinned runtime validation and SBOM manifest generation.
 - Normalized CI workflow hardening artifacts and docs to include full OSS capability set used by module (`validate`, `pytest`, `actionlint`, `codeql`, `gitleaks/secret-scan`, `dependency-review`, `dependency-check`, `cross-platform`, `scorecard`, `release`).
 - Synchronized README/docs/security text with actual branch-protection and public repository security controls.
