@@ -28,8 +28,6 @@
 - `docker-language-server`
 - `taplo`
 - `marksman`
-- `qtdeclarative`
-- `qtlanguageserver`
 - `uv`
 - `bun`
 - `python3`
