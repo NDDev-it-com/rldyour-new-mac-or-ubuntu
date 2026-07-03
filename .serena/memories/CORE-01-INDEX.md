@@ -1,6 +1,6 @@
 <!-- Memory Metadata
-Last updated: 2026-07-04
-Last verified: 2026-07-04
+Last updated: 2026-07-03
+Last verified: 2026-07-03
 Last commit: faeece6a29ab829a7760bd0cb6c32be8540c3bd5 docs: align bootstrap module release and memory surfaces
 Scope: README.md, AGENTS.md, .claude/CLAUDE.md, .serena/project.yml, .serena/memories/**
 Area: CORE
