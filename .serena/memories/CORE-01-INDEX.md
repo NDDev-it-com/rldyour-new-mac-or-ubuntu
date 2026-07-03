@@ -1,7 +1,7 @@
 <!-- Memory Metadata
 Last updated: 2026-07-04
 Last verified: 2026-07-04
-Last commit: acea1f0babd9b5b75b6bf3d0d507ae9e3be9f9b1 chore(serena): sync project knowledge after 0e8b8c5
+Last commit: faeece6a29ab829a7760bd0cb6c32be8540c3bd5 docs: align bootstrap module release and memory surfaces
 Scope: README.md, AGENTS.md, .claude/CLAUDE.md, .serena/project.yml, .serena/memories/**
 Area: CORE
 -->
