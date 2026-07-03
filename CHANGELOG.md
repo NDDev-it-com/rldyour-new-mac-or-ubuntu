@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.1.3] - 2026-07-04
+
+### Added
+
+- Install pinned browser providers (Chrome DevTools MCP, Playwright CLI, Webwright) for all adapters.
+
 ## [0.1.2] - 2026-07-04
 
 ### Fixed
