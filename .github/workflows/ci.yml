@@ -63,7 +63,6 @@ jobs:
 
   bootstrap-validate:
     needs: bootstrap-script-lint
-    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == matrix.platform
     runs-on: ${{ matrix.os }}
     name: bootstrap-${{ matrix.platform }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'plan' }}
     strategy:
@@ -81,20 +80,26 @@ jobs:
           fetch-depth: 1
 
       - name: Prepare shellcheck
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == '${{ matrix.platform }}'
         run: |
-          if [[ "${{ matrix.os }}" == macos* ]]; then
-            brew update
-            brew install shellcheck
-          else
-            sudo apt-get update
-            sudo apt-get install -y shellcheck
-          fi
+          case "${{ matrix.os }}" in
+            macos*) 
+              brew update
+              brew install shellcheck
+              ;;
+            *)
+              sudo apt-get update
+              sudo apt-get install -y shellcheck
+              ;;
+          esac
 
       - name: Validate bootstrap scripts (syntax + shellcheck + contract + dry-runs)
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == '${{ matrix.platform }}'
         run: |
           bash scripts/ci/validate.sh
 
       - name: Verify bootstrap entrypoint for target platform
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == '${{ matrix.platform }}'
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.mode }}" == "apply" ]]; then
             bash scripts/bootstrap.sh --platform "${{ matrix.platform }}" --apply
@@ -110,9 +115,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - os: ubuntu-latest
+            platform: ubuntu
+            cross_platform: macos
+          - os: macos-latest
+            platform: macos
+            cross_platform: ubuntu
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -120,12 +129,9 @@ jobs:
           fetch-depth: 1
 
       - name: Crosscheck other platform installer in plan mode
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == '${{ matrix.platform }}'
         run: |
-          if [[ "${{ matrix.os }}" == macos-latest ]]; then
-            bash scripts/bootstrap.sh --platform ubuntu --plan --skip-system --skip-checks
-          else
-            bash scripts/bootstrap.sh --platform macos --plan --skip-system --skip-checks
-          fi
+          bash scripts/bootstrap.sh --platform "${{ matrix.cross_platform }}" --plan --skip-system --skip-checks
 
   workflow-lint:
     runs-on: ubuntu-latest
