@@ -55,3 +55,32 @@ def test_profile_pin_and_lsp_parity() -> None:
     assert "0.1.4" in macos_versions.get("MIMOCODE_VERSION", "")
 
     assert "gopls" in macos
+
+
+def test_ubuntu_installs_marksman_for_verify_contract() -> None:
+    ubuntu = Path("scripts/ubuntu/install.sh").read_text(encoding="utf-8")
+    macos = Path("scripts/macos/install.sh").read_text(encoding="utf-8")
+    verify = Path("scripts/ubuntu/verify.sh").read_text(encoding="utf-8")
+
+    array_pattern = re.compile(
+        r"^\s*BUN_LSP_PACKAGES=\((.*?)\)", re.MULTILINE | re.DOTALL
+    )
+    system_pattern = re.compile(
+        r"^\s*BREW_SYSTEM_PACKAGES=\((.*?)\)", re.MULTILINE | re.DOTALL
+    )
+
+    def parse_array(body: str, pattern: re.Pattern[str], name: str) -> set[str]:
+        match = pattern.search(body)
+        assert match is not None, f"{name} array not found"
+        raw = match.group(1)
+        tokens = []
+        for token in re.findall(r"\"([^\"]+)\"|'([^']+)'|([^\s#]+)", raw):
+            value = token[0] or token[1] or token[2]
+            value = value.strip()
+            if value:
+                tokens.append(value)
+        return set(tokens)
+
+    assert "marksman" in parse_array(ubuntu, array_pattern, "ubuntu BUN_LSP_PACKAGES")
+    assert "marksman" in parse_array(macos, system_pattern, "macOS BREW_SYSTEM_PACKAGES")
+    assert "marksman" in verify
