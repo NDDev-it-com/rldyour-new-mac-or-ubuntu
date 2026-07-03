@@ -5,12 +5,31 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run bootstrap as plan (default) or apply."
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+      platform:
+        description: "Run target platform(s) on matrix."
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - macos
+          - ubuntu
 
 permissions:
   contents: read
 
 jobs:
   bootstrap-validate:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == matrix.platform
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +39,7 @@ jobs:
           - os: macos-latest
             platform: macos
     runs-on: ${{ matrix.os }}
+    name: bootstrap-${{ matrix.platform }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'plan' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,10 +62,15 @@ jobs:
 
       - name: Verify bootstrap entrypoint for target platform
         run: |
-          bash scripts/bootstrap.sh --platform "${{ matrix.platform }}" --plan --skip-checks
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.mode }}" == "apply" ]]; then
+            bash scripts/bootstrap.sh --platform "${{ matrix.platform }}" --apply
+          else
+            bash scripts/bootstrap.sh --platform "${{ matrix.platform }}" --plan --skip-checks
+          fi
 
   bootstrap-dryrun-crosscheck:
     needs: bootstrap-validate
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'plan'
     strategy:
       fail-fast: false
       matrix:

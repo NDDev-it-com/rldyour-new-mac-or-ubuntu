@@ -128,8 +128,18 @@ CI для модуля:
 - матрица: `ubuntu-latest`, `macos-latest`
 - шаги:
   - `bash scripts/ci/validate.sh` (syntax + shellcheck + contract + plan-run)
-  - `bash scripts/bootstrap.sh --platform ${{matrix.platform}} --plan --skip-checks`
-  - cross-check "нецелевой" платформы в plan режиме
+  - запуск `bootstrap.sh` через матричный шаг для `${{ matrix.platform }}`:
+    - `mode=plan`: `bash scripts/bootstrap.sh --platform ${{matrix.platform}} --plan --skip-checks`
+    - `mode=apply`: `bash scripts/bootstrap.sh --platform ${{matrix.platform}} --apply`
+  - cross-check "нецелевой" платформы в plan-режиме
+- параметризация workflow:
+  - `mode: plan|apply` (по умолчанию `plan`)
+  - `platform: both|macos|ubuntu` (по умолчанию `both`)
+- примеры ручного запуска:
+  - `gh workflow run .github/workflows/ci.yml -f mode=plan -f platform=both`
+  - `gh workflow run .github/workflows/ci.yml -f mode=apply -f platform=macos`
+- cross-platform parity:
+  - при ручном `mode=plan` и `platform=both` второй job выполняет плановый cross-check целевой ОС.
 
 ## 4) Проверка после установки
 

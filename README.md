@@ -88,6 +88,12 @@ bash scripts/bootstrap.sh --platform ubuntu --plan --skip-checks
 - `bash scripts/macos/verify.sh [--strict] [--skip-optional]`
 - `bash scripts/ubuntu/verify.sh [--strict] [--skip-optional]`
 - GitHub Actions: `.github/workflows/ci.yml` (матрица `macos-latest` + `ubuntu-latest`)
+- Для ручного запуска CI:
+  - `gh workflow run .github/workflows/ci.yml -f mode=plan -f platform=both`
+  - `gh workflow run .github/workflows/ci.yml -f mode=apply -f platform=macos`
+- Inputs:
+  - `mode=plan|apply` (по умолчанию `plan`)
+  - `platform=both|macos|ubuntu` (по умолчанию `both`)
 
 ## Версионность и лицензия
 
@@ -96,4 +102,3 @@ bash scripts/bootstrap.sh --platform ubuntu --plan --skip-checks
 - OpenCode: `1.17.13`
 - MiMoCode: `0.1.4`
 - Репозиторий: `AGPL-3.0-or-later` (`LICENSE`, `NOTICE`)
-

@@ -74,8 +74,16 @@ the owner terminal stack:
 - GitHub Actions matrix:
   - `ubuntu-latest`, `macos-latest`
   - runs `bash scripts/ci/validate.sh`
-  - runs platform plan checks with `--skip-checks`
+  - runs platform checks with:
+    - `mode=plan`: `--plan --skip-checks`
+    - `mode=apply`: `--apply`
   - runs cross-check plan for the alternate platform
+- `workflow_dispatch` inputs:
+  - `mode=plan|apply` (default: `plan`)
+  - `platform=both|macos|ubuntu` (default: `both`)
+- Manual CI runs:
+  - `gh workflow run .github/workflows/ci.yml -f mode=plan -f platform=both`
+  - `gh workflow run .github/workflows/ci.yml -f mode=apply -f platform=macos`
 - Always run before merge:
   - `bash scripts/ci/validate.sh`
   - platform plan runs (`--plan`) for both macOS and Ubuntu
