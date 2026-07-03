@@ -152,9 +152,7 @@ CI для модуля:
   - Dependabot security alerts + Dependabot security updates
   - Branch protection на `main` (1 review, запрет force push/delete, conversation resolution)
 
-Ограничение:
-
-- `Advanced Security` через GitHub API для модулей публичных репозиториев сейчас недоступен (422), поэтому включены все разрешённые OSS-фичи и проверки.
+`Advanced Security`-наборы и расширенный Secret scanning включены в соответствии с публичным режимом GitHub (включая non-provider patterns, AI detection, validity checks и delegated alert dismissal), без привязки к платным возможностям.
 
 ## 4) Проверка после установки
 

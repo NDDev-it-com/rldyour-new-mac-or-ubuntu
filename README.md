@@ -106,6 +106,8 @@ bash scripts/bootstrap.sh --platform ubuntu --plan --skip-checks
 
 ## Безопасность репозитория
 
+Подключены расширенные публичные возможности GitHub для OSS-проектов, включая Secret scanning, Secret scanning push protection, Dependabot security alerts/updates и защищённую branch-protection.
+
 - Включены:
   - Secret scanning
   - Secret scanning push protection
@@ -122,8 +124,7 @@ bash scripts/bootstrap.sh --platform ubuntu --plan --skip-checks
     - обязательное разрешение разрешения бесед в PR (conversation resolution)
   - Security policy: `./SECURITY.md`
 
-- Ограничение:
-  - `Advanced Security` API пока недоступен для этих репозиториев (HTTP 422), включены все доступные OSS-режим возможности.
+Публичные security-фичи уровня OSS в репозитории включены и регулярно верифицируются через GitHub API (включая расширенный Secret scanning).
 
 ## Версионность и лицензия
 
