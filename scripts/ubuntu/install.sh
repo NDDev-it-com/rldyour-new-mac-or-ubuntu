@@ -21,14 +21,19 @@ CODEX_VERSION="0.142.5"
 OPENCODE_VERSION="1.17.13"
 MIMOCODE_VERSION="0.1.4"
 ANTIGRAVITY_INSTALL_SCRIPT="https://antigravity.google/cli/install.sh"
+MARKSMAN_VERSION="${MARKSMAN_VERSION:-2026-02-08}"
+MARKSMAN_REPOSITORY="${MARKSMAN_REPOSITORY:-artempyanykh/marksman}"
 
+# The `pyright` package ships both `pyright` and `pyright-langserver` console
+# scripts; there is no separate `pyright-langserver` distribution to install.
 PYTHON_TOOLING_PACKAGES=(
-  pyright-langserver
   pyright
   ruff
   pytest
 )
 
+# taplo ships as the npm `@taplo/cli` package (bare `taplo` is unpublished);
+# marksman is not on npm and is installed from its pinned GitHub release below.
 BUN_LSP_PACKAGES=(
   typescript
   typescript-language-server
@@ -36,8 +41,7 @@ BUN_LSP_PACKAGES=(
   bash-language-server
   dockerfile-language-server-nodejs
   vscode-langservers-extracted
-  taplo
-  marksman
+  @taplo/cli
 )
 
 APT_SYSTEM_PACKAGES=(
@@ -218,6 +222,39 @@ install_go_lsp() {
   rldyour::run sudo apt-get install -y "$APT_GOPLS_PACKAGE"
 }
 
+ensure_marksman() {
+  rldyour::section "Install marksman markdown LSP (pinned GitHub release)"
+  if command -v marksman >/dev/null 2>&1; then
+    rldyour::log "ok" "marksman already available"
+    return 0
+  fi
+  local arch asset dest
+  case "$(uname -m)" in
+    x86_64 | amd64) arch="x64" ;;
+    aarch64 | arm64) arch="arm64" ;;
+    *)
+      rldyour::log "warn" "unknown arch $(uname -m); skipping marksman"
+      return 0
+      ;;
+  esac
+  asset="marksman-linux-${arch}"
+  dest="$HOME/.local/bin/marksman"
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] download ${MARKSMAN_REPOSITORY}@${MARKSMAN_VERSION} ${asset} -> ${dest}"
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  if curl -fsSL "https://github.com/${MARKSMAN_REPOSITORY}/releases/download/${MARKSMAN_VERSION}/${asset}" -o "$dest"; then
+    chmod +x "$dest"
+    rldyour::log "ok" "marksman ${MARKSMAN_VERSION} installed -> ${dest}"
+  elif [ "$STRICT" -eq 1 ]; then
+    rldyour::log "error" "marksman download failed"
+    exit 1
+  else
+    rldyour::log "warn" "marksman install skipped (best-effort)"
+  fi
+}
+
 install_lsp() {
   rldyour::section "Install LSP set"
   if ! command -v bun >/dev/null 2>&1; then
@@ -262,6 +299,7 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   ensure_rust
   ensure_dart
   install_go_lsp
+  ensure_marksman
 else
   rldyour::log "warn" "system layer skipped by --skip-system"
 fi

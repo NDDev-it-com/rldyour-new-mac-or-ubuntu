@@ -55,7 +55,7 @@
 - `typescript-language-server`
 - `yaml-language-server`
 - `bash-language-server`
-- `dockerfile-language-server-nodejs` (команда `docker-language-server`)
+- `dockerfile-language-server-nodejs` (команда `docker-langserver`)
 - `vscode-langservers-extracted` (HTML/CSS/JSON servers)
 - `taplo`
 - `marksman`
@@ -116,7 +116,7 @@
 - `typescript-language-server`
 - `yaml-language-server`
 - `bash-language-server`
-- `dockerfile-language-server-nodejs` (команда `docker-language-server`)
+- `dockerfile-language-server-nodejs` (команда `docker-langserver`)
 - `vscode-langservers-extracted` (HTML/CSS/JSON servers)
 - `taplo`
 - `marksman`

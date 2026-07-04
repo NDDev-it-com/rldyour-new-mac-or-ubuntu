@@ -22,13 +22,16 @@ OPENCODE_VERSION="1.17.13"
 MIMOCODE_VERSION="0.1.4"
 ANTIGRAVITY_INSTALL_SCRIPT="https://antigravity.google/cli/install.sh"
 
+# The `pyright` package ships both `pyright` and `pyright-langserver` console
+# scripts; there is no separate `pyright-langserver` distribution to install.
 PYTHON_TOOLING_PACKAGES=(
-  pyright-langserver
   pyright
   ruff
   pytest
 )
 
+# taplo is provided by Homebrew (BREW_SYSTEM_PACKAGES); it is not published as a
+# bare npm `taplo` package, so it must not be bun-installed here.
 BUN_LSP_PACKAGES=(
   typescript
   typescript-language-server
@@ -36,7 +39,6 @@ BUN_LSP_PACKAGES=(
   bash-language-server
   dockerfile-language-server-nodejs
   vscode-langservers-extracted
-  taplo
 )
 
 BREW_SYSTEM_PACKAGES=(
@@ -158,6 +160,30 @@ install_dart() {
   rldyour::run brew install dart-lang/dart/dart
 }
 
+ensure_clangd() {
+  rldyour::section "Ensure clangd on PATH (llvm is keg-only)"
+  if command -v clangd >/dev/null 2>&1; then
+    rldyour::log "ok" "clangd already on PATH"
+    return 0
+  fi
+  if ! command -v brew >/dev/null 2>&1; then
+    rldyour::log "warn" "brew unavailable; cannot resolve keg-only clangd"
+    return 0
+  fi
+  local keg
+  keg="$(brew --prefix llvm 2>/dev/null)/bin/clangd"
+  if [ -x "$keg" ]; then
+    mkdir -p "$HOME/.local/bin"
+    rldyour::run ln -sf "$keg" "$HOME/.local/bin/clangd"
+    rldyour::log "ok" "linked keg-only clangd -> ~/.local/bin/clangd"
+  elif [ "$STRICT" -eq 1 ]; then
+    rldyour::log "error" "clangd not found under $(brew --prefix llvm 2>/dev/null); install llvm first"
+    exit 1
+  else
+    rldyour::log "warn" "clangd not found under llvm keg; ensure llvm is installed"
+  fi
+}
+
 install_python_tooling() {
   rldyour::section "Install Python tooling"
   if ! command -v uv >/dev/null 2>&1; then
@@ -270,6 +296,7 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   install_python_tooling
   ensure_rust
   install_dart
+  ensure_clangd
 else
   rldyour::log "warn" "system layer skipped by --skip-system"
 fi

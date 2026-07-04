@@ -57,7 +57,6 @@ required_cmds=(
   "vscode-html-language-server"
   "vscode-css-language-server"
   "vscode-json-language-server"
-  "docker-language-server"
   "chrome-devtools-mcp"
   "playwright-cli"
 )
@@ -72,6 +71,10 @@ for cmd in "${required_cmds[@]}"; do
 done
 
 rldyour::require_one_of_cmd required claude-code claude
+# macOS provides Docker's `docker-language-server` (Homebrew); Ubuntu provides
+# `docker-langserver` (dockerfile-language-server-nodejs). Either satisfies the
+# Dockerfile LSP requirement.
+rldyour::require_one_of_cmd required docker-language-server docker-langserver
 
 if [ "$INCLUDE_OPTIONAL" -eq 1 ]; then
   for cmd in "${optional_cmds[@]}"; do
