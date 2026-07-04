@@ -8,9 +8,16 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
     labels:
       - dependencies
       - ci
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
