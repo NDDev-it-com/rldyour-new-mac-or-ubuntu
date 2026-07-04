@@ -117,3 +117,42 @@ def test_lsp_install_channels_use_published_packages() -> None:
     # The Dockerfile LSP is satisfied by either command name across platforms.
     for verify_body in (macos_verify, ubuntu_verify):
         assert "require_one_of_cmd required docker-language-server docker-langserver" in verify_body
+
+
+AI_PIN_PATTERN = re.compile(
+    r"^(CLAUDE_CODE_VERSION|CODEX_VERSION|OPENCODE_VERSION|MIMOCODE_VERSION)=\"([^\"]+)\"$",
+    re.MULTILINE,
+)
+
+
+def test_ai_runtime_pins_match_documentation_surfaces() -> None:
+    """Doc surfaces must cite the same AI CLI versions the installer pins.
+
+    The installer profiles (scripts/*/install.sh) are the source of truth for
+    AI runtime pins. README, instruction docs, and the install matrix duplicate
+    those versions for humans; without this guard a pin bump (e.g.
+    2.1.199 -> 2.1.201) can land in the installers while the prose silently
+    drifts, and no other check catches it.
+    """
+    install = Path("scripts/macos/install.sh").read_text(encoding="utf-8")
+    pins = {name: value for name, value in AI_PIN_PATTERN.findall(install)}
+    assert set(pins) == {
+        "CLAUDE_CODE_VERSION",
+        "CODEX_VERSION",
+        "OPENCODE_VERSION",
+        "MIMOCODE_VERSION",
+    }, f"unexpected installer pin set: {sorted(pins)}"
+
+    doc_surfaces = (
+        "README.md",
+        "AGENTS.md",
+        ".claude/CLAUDE.md",
+        "docs/install.md",
+    )
+    for surface in doc_surfaces:
+        text = Path(surface).read_text(encoding="utf-8")
+        for name, version in pins.items():
+            assert version in text, (
+                f"{surface} is missing {name}={version}; align the doc surface "
+                f"with the installer pin"
+            )
