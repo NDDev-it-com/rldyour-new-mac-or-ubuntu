@@ -1,7 +1,6 @@
 name: scorecard
 
 on:
-  branch_protection_rule:
   schedule:
     - cron: "0 3 * * 1"
   push:
@@ -17,30 +16,8 @@ concurrency:
 jobs:
   analysis:
     name: OSSF Scorecard
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     permissions:
       id-token: write
       contents: read
       actions: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          persist-credentials: false
-
-      - name: Run analysis
-        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a
-        with:
-          results_file: results.json
-          results_format: json
-          publish_results: true
-
-      - name: Upload Scorecard results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: scorecard-results
-          path: results.json
-          retention-days: 14
+    uses: NDDev-it-com/nddev-ci-workflows/.github/workflows/public-scorecard-json.yml@21bd3f7c3bbcbd7a9ecd3475b293d9e65aa8563a # 0.2.2

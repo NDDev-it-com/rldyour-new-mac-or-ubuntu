@@ -7,8 +7,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: actionlint-${{ github.workflow }}-${{ github.ref }}
@@ -17,15 +16,6 @@ concurrency:
 jobs:
   actionlint:
     name: Workflow YAML lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     permissions:
       contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Run actionlint
-        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7
+    uses: NDDev-it-com/nddev-ci-workflows/.github/workflows/actionlint.yml@21bd3f7c3bbcbd7a9ecd3475b293d9e65aa8563a # 0.2.2

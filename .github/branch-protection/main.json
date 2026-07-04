@@ -12,12 +12,12 @@
   "required_status_checks": [
     "bootstrap-gate",
     "Bootstrap module tests",
-    "cross-platform smoke (ubuntu-latest)",
-    "cross-platform smoke (windows-latest)",
-    "cross-platform smoke (macos-latest)",
-    "Gitleaks secret scan",
-    "codeql-analysis-actions",
-    "dependency-review",
+    "cross-platform smoke (ubuntu-latest) / smoke (ubuntu-latest)",
+    "cross-platform smoke (windows-latest) / smoke (windows-latest)",
+    "cross-platform smoke (macos-latest) / smoke (macos-latest)",
+    "Gitleaks secret scan / Gitleaks secret scan",
+    "codeql-analysis-actions / CodeQL (actions)",
+    "dependency-review / Dependency review",
     "Dependency pin checks"
   ]
 }

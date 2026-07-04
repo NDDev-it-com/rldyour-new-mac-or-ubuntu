@@ -19,31 +19,10 @@ concurrency:
 jobs:
   analyze:
     name: codeql-analysis-actions
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        language:
-          - actions
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411  # v2.19.4
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          persist-credentials: false
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a
-        with:
-          category: "/language:${{ matrix.language }}"
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: NDDev-it-com/nddev-ci-workflows/.github/workflows/public-codeql.yml@21bd3f7c3bbcbd7a9ecd3475b293d9e65aa8563a # 0.2.2
+    with:
+      languages: '["actions"]'
