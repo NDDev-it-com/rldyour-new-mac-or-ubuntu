@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.1.6] - 2026-07-04
+
+### Changed
+
+- Refresh Claude Code runtime pin to 2.1.201 (latest stable) across adapter surfaces and the bootstrap installer.
+
 ## [0.1.5] - 2026-07-04
 
 ### Fixed
