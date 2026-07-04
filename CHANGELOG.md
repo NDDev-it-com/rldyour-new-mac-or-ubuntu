@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.1.4] - 2026-07-04
+
+### Fixed
+
+- Install taplo, marksman, pyright, and clangd via working channels so a clean-PC bootstrap and strict verify succeed.
+
 ## [0.1.3] - 2026-07-04
 
 ### Added
