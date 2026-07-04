@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.1.5] - 2026-07-04
+
+### Fixed
+
+- Align bootstrap smoke tests with the corrected clean-PC install channels.
+
 ## [0.1.4] - 2026-07-04
 
 ### Fixed
