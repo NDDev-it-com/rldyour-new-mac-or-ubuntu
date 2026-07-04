@@ -10,6 +10,14 @@
     "require_code_owner_review": true
   },
   "required_status_checks": [
-    "bootstrap-gate"
+    "bootstrap-gate",
+    "Bootstrap module tests",
+    "cross-platform smoke (ubuntu-latest)",
+    "cross-platform smoke (windows-latest)",
+    "cross-platform smoke (macos-latest)",
+    "Gitleaks secret scan",
+    "codeql-analysis-actions",
+    "dependency-review",
+    "Dependency pin checks"
   ]
 }
