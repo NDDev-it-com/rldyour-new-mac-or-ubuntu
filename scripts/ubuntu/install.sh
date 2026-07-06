@@ -286,6 +286,102 @@ install_quality_packages() {
   done
 }
 
+# Install the SAST/secret/dependency scanners that verify.sh requires but apt
+# does not ship. Each scanner is installed via the channel its upstream publishes
+# (uv tool, pipx, go install, or the official install script). All best-effort:
+# a missing channel only logs a warning and does not abort the bootstrap.
+install_security_scanners() {
+  rldyour::section "Install security/quality scanners (verify.sh required)"
+
+  # basedpyright ships as a Python wheel; uv tool gives an isolated install.
+  if command -v basedpyright >/dev/null 2>&1; then
+    rldyour::log "ok" "basedpyright already on PATH"
+  elif command -v uv >/dev/null 2>&1; then
+    if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] uv tool install basedpyright"
+    else
+      rldyour::run uv tool install basedpyright
+    fi
+  else
+    rldyour::log "warn" "uv required for basedpyright; skipping"
+  fi
+
+  # osv-scanner ships a binary install script from Google.
+  if command -v osv-scanner >/dev/null 2>&1; then
+    rldyour::log "ok" "osv-scanner already on PATH"
+  else
+    if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] osv-scanner install script"
+    else
+      rldyour::run bash -c "curl -sSfL https://raw.githubusercontent.com/google/osv-scanner/main/install.sh | bash -s -- -b $HOME/.local/bin"
+    fi
+  fi
+
+  # gitleaks ships a binary install script from GitHub.
+  if command -v gitleaks >/dev/null 2>&1; then
+    rldyour::log "ok" "gitleaks already on PATH"
+  else
+    if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] gitleaks install script"
+    else
+      rldyour::run bash -c "curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | bash -s -- -b $HOME/.local/bin"
+    fi
+  fi
+
+  # semgrep ships as a Python wheel.
+  if command -v semgrep >/dev/null 2>&1; then
+    rldyour::log "ok" "semgrep already on PATH"
+  elif command -v pip3 >/dev/null 2>&1; then
+    if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] pip3 install --user semgrep"
+    else
+      rldyour::run pip3 install --user semgrep
+    fi
+  else
+    rldyour::log "warn" "pip3 required for semgrep; skipping"
+  fi
+
+  # hadolint ships a static binary on GitHub.
+  if command -v hadolint >/dev/null 2>&1; then
+    rldyour::log "ok" "hadolint already on PATH"
+  else
+    local arch asset
+    case "$(uname -m)" in
+      x86_64 | amd64) arch="x86_64" ;;
+      aarch64 | arm64) arch="arm64" ;;
+      *)
+        rldyour::log "warn" "unsupported arch for hadolint; skipping"
+        arch=""
+        ;;
+    esac
+    if [ -n "$arch" ]; then
+      if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+        rldyour::log "info" "[DRY-RUN] hadolint binary -> ~/.local/bin"
+      else
+        asset="hadolint-Linux-${arch}"
+        mkdir -p "$HOME/.local/bin"
+        if curl -fsSL "https://github.com/hadolint/hadolint/releases/latest/download/${asset}" -o "$HOME/.local/bin/hadolint"; then
+          chmod +x "$HOME/.local/bin/hadolint"
+          rldyour::log "ok" "hadolint installed -> ~/.local/bin/hadolint"
+        else
+          rldyour::log "warn" "hadolint download failed (best-effort)"
+        fi
+      fi
+    fi
+  fi
+
+  # actionlint ships a binary install script from rhysd.
+  if command -v actionlint >/dev/null 2>&1; then
+    rldyour::log "ok" "actionlint already on PATH"
+  else
+    if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] actionlint install script"
+    else
+      rldyour::run bash -c "curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- -o $HOME/.local/bin/actionlint"
+    fi
+  fi
+}
+
 # Install the JDK and R runtime baselines required by jdtls/Kotlin LSP and the R
 # language server respectively. Ubuntu has good apt coverage for both.
 ensure_java_and_r() {
@@ -302,9 +398,10 @@ ensure_java_and_r() {
   fi
 }
 
-# Install rustup-hosted LSP binaries via cargo that have no apt/bun equivalent:
-# gitlab-ci-ls and postgres-language-server (Supabase) on Ubuntu are best-effort
-# because Supabase ships a brew formula and a manual-install tarball but no apt.
+# Install cargo-hosted LSPs that have no apt/bun equivalent. gitlab-ci-ls is a
+# static Rust binary distributed via crates.io. Supabase postgres-language-server
+# is intentionally NOT installed here: on Ubuntu there is no apt/crate channel,
+# and verify.sh treats it as optional on this platform.
 ensure_cargo_lsps() {
   rldyour::section "Install cargo-hosted LSPs (best-effort)"
   if ! command -v cargo >/dev/null 2>&1; then
@@ -414,6 +511,7 @@ fi
 if [ "$SKIP_LSPS" -eq 0 ]; then
   install_lsp
   install_quality_packages
+  install_security_scanners
   ensure_extended_lsps
   ensure_cargo_lsps
 else

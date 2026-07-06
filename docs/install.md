@@ -155,13 +155,25 @@
 - `@taplo/cli` (taplo для Ubuntu)
 - `gh-actions-language-server`
 - `marksman` (pinned GitHub release)
-- `rust-analyzer`, `gopls`, `clangd`
+- `rust-analyzer` (через `rustup component add`)
+- `gopls` (через apt)
+- `clangd` (через apt)
 
 #### Quality-gate CLI (bun global, где нет apt-пакета)
 
 - `biome`, `oxlint` (JS/TS/JSON lint + format)
 - `markdownlint-cli2`, `prettier`
 - `@ansible/language-server`
+
+#### Security / quality scanners (verify.sh required, ставятся отдельными каналами)
+
+- `basedpyright` (через `uv tool install basedpyright`)
+- `osv-scanner` (binary install script от Google)
+- `gitleaks` (binary install script от GitHub)
+- `semgrep` (через `pip3 install --user semgrep`)
+- `hadolint` (статический binary с GitHub releases)
+- `actionlint` (binary install script от rhysd)
+- `yamllint`, `shellcheck`, `shfmt` (через apt)
 
 #### Расширенные SQL/R LSP (best-effort)
 

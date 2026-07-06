@@ -24,14 +24,18 @@ ANTIGRAVITY_INSTALL_SCRIPT="https://antigravity.google/cli/install.sh"
 
 # The `pyright` package ships both `pyright` and `pyright-langserver` console
 # scripts; there is no separate `pyright-langserver` distribution to install.
+# `ruff` is intentionally NOT listed here: it is installed via the Homebrew
+# `ruff` formula (see BREW_SYSTEM_PACKAGES) so its LSP server (`ruff server`) is
+# available system-wide and there is a single source of truth for the version.
 PYTHON_TOOLING_PACKAGES=(
   pyright
-  ruff
   pytest
 )
 
 # taplo is provided by Homebrew (BREW_SYSTEM_PACKAGES); it is not published as a
 # bare npm `taplo` package, so it must not be bun-installed here.
+# vscode-langservers-extracted is also installed via Homebrew (single source of
+# truth for the HTML/CSS/JSON servers), so it is not bun-installed here.
 # vtsls replaces typescript-language-server as the recommended TS/JS LSP (better
 # feature parity with the VS Code TS extension; chosen by Zed and LazyVim).
 BUN_LSP_PACKAGES=(
@@ -40,7 +44,6 @@ BUN_LSP_PACKAGES=(
   yaml-language-server
   bash-language-server
   dockerfile-language-server-nodejs
-  vscode-langservers-extracted
   gh-actions-language-server
 )
 

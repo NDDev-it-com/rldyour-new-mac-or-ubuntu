@@ -131,8 +131,12 @@ printf 'rustup:   %s\n' "$(rustup --version | head -n 1)"
 printf 'dart:     %s\n' "$(dart --version 2>&1 | head -n 1)"
 printf 'python:   %s\n' "$(python3 --version)"
 printf 'java:     %s\n' "$(java -version 2>&1 | head -n 1)"
-printf 'r:        %s\n' "$(R --version 2>&1 | head -n 1)"
 printf 'clangd:   %s\n' "$(clangd --version 2>&1 | head -n 1)"
+# R is optional; only print when actually installed so this section never aborts
+# verification under `set -euo pipefail` when R is absent.
+if command -v R >/dev/null 2>&1; then
+  printf 'r:        %s\n' "$(R --version 2>&1 | head -n 1)"
+fi
 
 if [ "$STRICT" -eq 1 ] || [ "$INCLUDE_OPTIONAL" -eq 0 ]; then
   rldyour::log "info" "verification finished in strict-like mode"
