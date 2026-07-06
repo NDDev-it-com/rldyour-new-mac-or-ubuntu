@@ -74,10 +74,12 @@ required_cmds=(
   "vscode-html-language-server"
   "vscode-css-language-server"
   "vscode-json-language-server"
-  "chrome-devtools-mcp"
-  "playwright-cli"
 )
 
+# Browser providers (chrome-devtools-mcp, playwright-cli) are intentionally
+# optional: they are installed by the --skip-browser-gated
+# rldyour::install_browser_providers layer and must not fail strict verification
+# on server-only profiles where the browser layer is skipped.
 optional_cmds=(
   "mimo"
   "agy"
@@ -103,6 +105,8 @@ optional_cmds=(
   "gh-actions-language-server"
   "gitlab-ci-ls"
   "postgres-language-server"
+  "chrome-devtools-mcp"
+  "playwright-cli"
 )
 
 for cmd in "${required_cmds[@]}"; do
