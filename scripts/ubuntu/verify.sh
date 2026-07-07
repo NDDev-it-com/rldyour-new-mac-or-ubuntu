@@ -116,6 +116,7 @@ optional_cmds=(
   "postgres-language-server"
   "chrome-devtools-mcp"
   "playwright-cli"
+  "cloak-chromium"
 )
 
 for cmd in "${required_cmds[@]}"; do

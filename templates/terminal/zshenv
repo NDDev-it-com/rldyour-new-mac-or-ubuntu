@@ -17,6 +17,13 @@ path=(
   $path
 )
 
+# CloakBrowser is the default privacy-first browser backend. Webwright and any
+# Playwright launch read this executable; chrome-devtools-mcp connects to the
+# managed CDP daemon (127.0.0.1:9222) instead. CLOAKBROWSER_LICENSE_KEY (Pro)
+# lives only in ~/.zshenv.secrets, never here.
+export AGENT_BROWSER_EXECUTABLE_PATH="${AGENT_BROWSER_EXECUTABLE_PATH:-$HOME/.local/bin/cloak-chromium}"
+export CLOAKBROWSER_CACHE_DIR="${CLOAKBROWSER_CACHE_DIR:-$HOME/.local/share/rldyour/cloakbrowser/cache}"
+
 # Private secrets (never committed anywhere).
 [[ -r "$HOME/.zshenv.secrets" ]] && source "$HOME/.zshenv.secrets"
 

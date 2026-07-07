@@ -173,6 +173,177 @@ rldyour::_install_webwright() {
   "$home/.venv/bin/python" -m playwright install chromium || return 1
 }
 
+# --- CloakBrowser privacy-first Chromium (owner standard) ---------------------
+# CloakBrowser is a stealth-hardened Chromium (source-level fingerprint patches)
+# used as the DEFAULT browser backend for every rldyour browser provider so that
+# terminal browser automation (Webwright / Playwright CLI / Chrome DevTools MCP)
+# runs through one privacy-hardened, low-trace engine. The free-tier binary
+# (Chromium v146 line) is signature-verified (Ed25519) by the wrapper before use;
+# Pro (v148+) is activated only by an owner-supplied CLOAKBROWSER_LICENSE_KEY read
+# from ~/.zshenv.secrets, never committed. Platform-agnostic (macOS + Linux).
+rldyour::_cloak_home() {
+  printf '%s' "${CLOAKBROWSER_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rldyour/cloakbrowser}"
+}
+
+# Install the CloakBrowser wrapper into an isolated venv, download + verify the
+# pinned free-tier Chromium binary, and publish two managed launchers on PATH:
+#   cloak-chromium          -> resolves and execs the real versioned binary
+#                              (never a symlink: the .app resolves Frameworks via
+#                              @executable_path, so the absolute real path is
+#                              required for renderer subprocesses to start)
+#   cloak-chromium-stealth  -> cloak-chromium + default stealth args (manual runs)
+rldyour::install_cloakbrowser() {
+  local strict="${RLDYOUR_STRICT:-0}"
+  local dry_run="${RLDYOUR_DRY_RUN:-1}"
+  local pin="${CLOAKBROWSER_PIN:-0.4.8}"
+  local bin_dir="${RLDYOUR_BIN_DIR:-$HOME/.local/bin}"
+  local home cache
+  home="$(rldyour::_cloak_home)"
+  cache="${CLOAKBROWSER_CACHE_DIR:-$home/cache}"
+
+  rldyour::section "Install CloakBrowser (privacy-first Chromium, pinned ${pin})"
+  if ! command -v uv >/dev/null 2>&1; then
+    if [ "$strict" -eq 1 ]; then
+      rldyour::log "error" "uv is required to install the CloakBrowser wrapper"
+      return 1
+    fi
+    rldyour::log "warn" "uv unavailable; skipping CloakBrowser"
+    return 0
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] uv venv ${home}/.venv"
+    rldyour::log "info" "[DRY-RUN] uv pip install cloakbrowser==${pin} (isolated venv)"
+    rldyour::log "info" "[DRY-RUN] cloakbrowser.ensure_binary() -> download + Ed25519-verify free Chromium into ${cache}"
+    rldyour::log "info" "[DRY-RUN] install launchers ${bin_dir}/cloak-chromium and ${bin_dir}/cloak-chromium-stealth"
+    return 0
+  fi
+
+  mkdir -p "$home" "$bin_dir"
+  if [ ! -x "$home/.venv/bin/python" ]; then
+    uv venv "$home/.venv" >/dev/null 2>&1 || { rldyour::log "warn" "CloakBrowser venv creation failed (best-effort)"; return 0; }
+  fi
+  if ! uv pip install --python "$home/.venv/bin/python" "cloakbrowser==${pin}" >/dev/null 2>&1; then
+    rldyour::log "warn" "CloakBrowser wrapper install failed (best-effort)"
+    return 0
+  fi
+  if ! CLOAKBROWSER_CACHE_DIR="$cache" "$home/.venv/bin/python" -c "import cloakbrowser; print(cloakbrowser.ensure_binary())" >/dev/null 2>&1; then
+    rldyour::log "warn" "CloakBrowser binary download/verify failed (best-effort; check network)"
+  fi
+
+  local fp
+  case "$(uname -s)" in Darwin) fp="macos" ;; *) fp="linux" ;; esac
+
+  cat > "$bin_dir/cloak-chromium" <<RESOLVE
+#!/usr/bin/env bash
+# Managed by rldyour-new-mac-or-ubuntu. Resolve + exec the CloakBrowser Chromium.
+# The .app bundle resolves Frameworks via @executable_path, so exec the REAL
+# versioned path (never a symlink to Contents/MacOS/Chromium).
+set -euo pipefail
+CB="\${CLOAKBROWSER_CACHE_DIR:-${cache}}"
+bin="\$(/bin/ls -1d "\$CB"/chromium-*/Chromium.app/Contents/MacOS/Chromium "\$CB"/chromium-*/chrome 2>/dev/null | sort -V | tail -1)"
+if [ -z "\${bin:-}" ] || [ ! -x "\$bin" ]; then
+  echo "cloak-chromium: no CloakBrowser Chromium binary under \$CB (run bootstrap browser layer)" >&2
+  exit 127
+fi
+exec "\$bin" "\$@"
+RESOLVE
+  chmod +x "$bin_dir/cloak-chromium"
+
+  cat > "$bin_dir/cloak-chromium-stealth" <<STEALTH
+#!/usr/bin/env bash
+# Managed by rldyour-new-mac-or-ubuntu. CloakBrowser + default stealth args.
+exec "${bin_dir}/cloak-chromium" \\
+  --no-sandbox --fingerprint-platform="\${CLOAK_FP_PLATFORM:-${fp}}" \\
+  --no-first-run --no-default-browser-check "\$@"
+STEALTH
+  chmod +x "$bin_dir/cloak-chromium-stealth"
+  rldyour::log "ok" "CloakBrowser installed; launchers at ${bin_dir}/cloak-chromium[-stealth]"
+}
+
+# Install and load a managed background service that runs one headless
+# CloakBrowser with a loopback CDP endpoint (127.0.0.1:9222). Every adapter's
+# chrome-devtools-mcp connects with --browserUrl, keeping the committed adapter
+# configs portable (no per-user absolute paths). launchd on macOS, systemd
+# --user on Linux; KeepAlive so the endpoint is always available.
+rldyour::install_cloakbrowser_daemon() {
+  local dry_run="${RLDYOUR_DRY_RUN:-1}"
+  local bin_dir="${RLDYOUR_BIN_DIR:-$HOME/.local/bin}"
+  local port="${CLOAKBROWSER_CDP_PORT:-9222}"
+  local home profile fp
+  home="$(rldyour::_cloak_home)"
+  profile="$home/daemon-profile"
+  case "$(uname -s)" in Darwin) fp="macos" ;; *) fp="linux" ;; esac
+
+  rldyour::section "Install CloakBrowser CDP daemon (127.0.0.1:${port})"
+  if [ "$dry_run" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] managed headless CloakBrowser CDP service on 127.0.0.1:${port} (KeepAlive)"
+    return 0
+  fi
+  mkdir -p "$profile"
+
+  if [ "$fp" = "macos" ]; then
+    local plist="$HOME/Library/LaunchAgents/com.rldyour.cloakbrowser.plist"
+    mkdir -p "$HOME/Library/LaunchAgents"
+    cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.rldyour.cloakbrowser</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${bin_dir}/cloak-chromium</string>
+    <string>--headless=new</string>
+    <string>--remote-debugging-address=127.0.0.1</string>
+    <string>--remote-debugging-port=${port}</string>
+    <string>--user-data-dir=${profile}</string>
+    <string>--no-first-run</string>
+    <string>--no-default-browser-check</string>
+    <string>--fingerprint-platform=${fp}</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardErrorPath</key><string>${home}/daemon.log</string>
+  <key>StandardOutPath</key><string>${home}/daemon.log</string>
+</dict>
+</plist>
+PLIST
+    launchctl bootout "gui/$(id -u)/com.rldyour.cloakbrowser" >/dev/null 2>&1 || true
+    if launchctl bootstrap "gui/$(id -u)" "$plist" >/dev/null 2>&1; then
+      rldyour::log "ok" "CloakBrowser launchd service loaded (127.0.0.1:${port})"
+    else
+      rldyour::log "warn" "launchctl bootstrap failed; load manually: launchctl bootstrap gui/$(id -u) $plist"
+    fi
+  else
+    local unit="$HOME/.config/systemd/user/rldyour-cloakbrowser.service"
+    mkdir -p "$HOME/.config/systemd/user"
+    cat > "$unit" <<UNIT
+[Unit]
+Description=rldyour CloakBrowser headless CDP endpoint
+After=default.target
+
+[Service]
+ExecStart=${bin_dir}/cloak-chromium --headless=new --remote-debugging-address=127.0.0.1 --remote-debugging-port=${port} --user-data-dir=${profile} --no-first-run --no-default-browser-check --fingerprint-platform=${fp}
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+UNIT
+    if command -v systemctl >/dev/null 2>&1 && systemctl --user daemon-reload >/dev/null 2>&1; then
+      if systemctl --user enable --now rldyour-cloakbrowser.service >/dev/null 2>&1; then
+        rldyour::log "ok" "CloakBrowser systemd --user service enabled (127.0.0.1:${port})"
+      else
+        rldyour::log "warn" "systemd --user enable failed; start manually"
+      fi
+    else
+      rldyour::log "warn" "systemd --user unavailable; start CloakBrowser CDP daemon manually"
+    fi
+  fi
+}
+
 # Install the pinned browser providers used by the AI CLI config adapters:
 # Chrome DevTools MCP and Playwright CLI (deterministic bun globals, required)
 # plus Microsoft Webwright (pinned checkout, best-effort). Shared across macOS
@@ -188,6 +359,21 @@ rldyour::install_browser_providers() {
   local webwright_home="${WEBWRIGHT_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rldyour/webwright/Microsoft-Webwright}"
 
   rldyour::section "Install browser providers (pinned)"
+
+  # CloakBrowser is the DEFAULT privacy-first browser backend for every provider
+  # below: its managed CDP daemon (127.0.0.1:9222) is what chrome-devtools-mcp
+  # connects to via --browserUrl, and its launcher is the Webwright / Playwright
+  # executable. Install it (and start the daemon) before the providers so the
+  # endpoint is live when they first connect. Skip the whole CloakBrowser layer
+  # with RLDYOUR_SKIP_CLOAKBROWSER=1 (falls back to each provider's own Chromium).
+  if [ "${RLDYOUR_SKIP_CLOAKBROWSER:-0}" -eq 0 ]; then
+    rldyour::install_cloakbrowser
+    rldyour::install_cloakbrowser_daemon
+    export AGENT_BROWSER_EXECUTABLE_PATH="${AGENT_BROWSER_EXECUTABLE_PATH:-${RLDYOUR_BIN_DIR:-$HOME/.local/bin}/cloak-chromium}"
+  else
+    rldyour::log "warn" "CloakBrowser layer skipped by RLDYOUR_SKIP_CLOAKBROWSER"
+  fi
+
   if ! command -v bun >/dev/null 2>&1; then
     if [ "$strict" -eq 1 ]; then
       rldyour::log "error" "bun is required for browser provider install"

@@ -133,6 +133,7 @@ optional_cmds=(
   "gitlab-ci-ls"
   "chrome-devtools-mcp"
   "playwright-cli"
+  "cloak-chromium"
 )
 
 for cmd in "${required_cmds[@]}"; do
