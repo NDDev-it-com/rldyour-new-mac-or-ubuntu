@@ -120,6 +120,21 @@
 - `playwright-cli` -> `@playwright/cli@0.1.15` (bun global) + `playwright-cli install --skills`
 - Microsoft Webwright -> pinned GitHub checkout (`4a46f282...`, best-effort venv install)
 
+#### CloakBrowser (default privacy-first Chromium)
+
+- `cloakbrowser==0.4.8` (Python wrapper) в изолированном venv под
+  `~/.local/share/rldyour/cloakbrowser/.venv`; free-tier бинарь Chromium (линия
+  v146) скачивается и проверяется по Ed25519-подписи (`ensure_binary`).
+- managed-лаунчеры на PATH: `cloak-chromium` (резолвит и exec'ает реальный
+  версионный бинарь) и `cloak-chromium-stealth` (+ дефолтные stealth-аргументы).
+- managed CDP-демон на `127.0.0.1:9222` (launchd на macOS, systemd `--user` на
+  Linux, `KeepAlive`) — headless CloakBrowser, к которому каждый адаптерный
+  `chrome-devtools-mcp` подключается через `--browserUrl`; Webwright/Playwright
+  используют `cloak-chromium` как executable (`AGENT_BROWSER_EXECUTABLE_PATH`).
+- Pro (v148+) активируется только `CLOAKBROWSER_LICENSE_KEY` из
+  `~/.zshenv.secrets`, никогда не коммитится. Пропустить весь слой:
+  `RLDYOUR_SKIP_CLOAKBROWSER=1`.
+
 ### Ubuntu / server
 
 #### Системный слой (apt)

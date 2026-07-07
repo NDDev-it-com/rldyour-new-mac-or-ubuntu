@@ -5,6 +5,28 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.2.4] - 2026-07-07
+
+### Added
+
+- CloakBrowser as the default privacy-first browser backend for every provider.
+  Installs the pinned `cloakbrowser==0.4.8` wrapper into an isolated venv,
+  downloads and Ed25519-verifies the free-tier Chromium binary, and publishes
+  `cloak-chromium` / `cloak-chromium-stealth` launchers. A managed headless CDP
+  daemon (launchd on macOS, systemd `--user` on Linux, `KeepAlive`) serves
+  `127.0.0.1:9222`; adapter Chrome DevTools MCP connects with `--browserUrl`,
+  Webwright/Playwright use the launcher via `AGENT_BROWSER_EXECUTABLE_PATH`.
+  Pro (v148+) is opt-in through `CLOAKBROWSER_LICENSE_KEY`; skip the layer with
+  `RLDYOUR_SKIP_CLOAKBROWSER=1`.
+
+### Fixed
+
+- Login-shell PATH precedence: the managed `.zprofile` re-asserts the user
+  toolchain directories after macOS `/etc/zprofile` runs `path_helper`, so
+  `zsh -l -c` (the Codex/OpenCode agent path) resolves the Homebrew/keg
+  toolchain (e.g. `clangd`) instead of the older `/usr/bin` system stubs.
+
+
 ## [0.2.3] - 2026-07-07
 
 ### Added

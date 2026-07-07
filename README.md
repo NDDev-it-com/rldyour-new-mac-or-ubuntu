@@ -6,9 +6,9 @@ rldyour module for macOS and Ubuntu workstation bootstrap, dependency installati
 
 | Field | Value |
 | --- | --- |
-| Adapter version | `0.2.3` |
+| Adapter version | `0.2.4` |
 | Runtime baseline | Claude Code `2.1.202`; Codex `0.142.5`; OpenCode `1.17.14`; MiMoCode `0.1.4`; Antigravity `agy` |
-| GitHub release tag | `0.2.3` |
+| GitHub release tag | `0.2.4` |
 
 Runtime pin sources: `scripts/macos/install.sh`, `scripts/ubuntu/install.sh`, and `config/rldyour-contract.json`.
 
@@ -90,6 +90,12 @@ OS profiles: 2 (macOS, Ubuntu)
 The bootstrap installs the pinned browser providers that every AI CLI config
 adapter relies on for browser evidence, debugging, and design validation:
 
+- CloakBrowser (`cloakbrowser==0.4.8`, isolated venv) — the default privacy-first
+  Chromium backend. A managed headless CDP daemon runs on `127.0.0.1:9222`
+  (launchd / systemd `--user`); every adapter's Chrome DevTools MCP connects to
+  it via `--browserUrl`, and Webwright/Playwright use the `cloak-chromium`
+  launcher. Free-tier binary is Ed25519-verified; Pro needs an owner-supplied
+  `CLOAKBROWSER_LICENSE_KEY`. Skip with `RLDYOUR_SKIP_CLOAKBROWSER=1`.
 - Chrome DevTools MCP (`chrome-devtools-mcp@1.5.0`, bun global)
 - Playwright CLI (`@playwright/cli@0.1.15`, bun global) plus its bundled skills
 - Microsoft Webwright (pinned GitHub checkout, best-effort venv install)
