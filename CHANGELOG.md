@@ -4,9 +4,6 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
-
-## [0.2.4] - 2026-07-07
-
 ### Added
 
 - CloakBrowser as the default privacy-first browser backend for every provider.
