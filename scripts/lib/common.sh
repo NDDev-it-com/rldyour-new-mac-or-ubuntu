@@ -333,6 +333,18 @@ RestartSec=3
 WantedBy=default.target
 UNIT
     if command -v systemctl >/dev/null 2>&1 && systemctl --user daemon-reload >/dev/null 2>&1; then
+      # Enable lingering so the --user service starts at boot and survives with no
+      # active login session -- required on a headless Ubuntu server. Best-effort:
+      # needs privileges, and without it the daemon still runs while logged in.
+      if command -v loginctl >/dev/null 2>&1 && ! loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null | grep -q '^yes$'; then
+        if loginctl enable-linger "$(id -un)" >/dev/null 2>&1; then
+          rldyour::log "ok" "enabled systemd linger for $(id -un) (boot-start on headless servers)"
+        elif command -v sudo >/dev/null 2>&1 && sudo -n loginctl enable-linger "$(id -un)" >/dev/null 2>&1; then
+          rldyour::log "ok" "enabled systemd linger for $(id -un) via sudo"
+        else
+          rldyour::log "warn" "could not enable linger; CloakBrowser daemon will not auto-start at boot on a headless server (run: loginctl enable-linger $(id -un))"
+        fi
+      fi
       if systemctl --user enable --now rldyour-cloakbrowser.service >/dev/null 2>&1; then
         rldyour::log "ok" "CloakBrowser systemd --user service enabled (127.0.0.1:${port})"
       else
