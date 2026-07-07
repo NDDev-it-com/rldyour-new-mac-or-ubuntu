@@ -4,6 +4,21 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+
+## [0.2.6] - 2026-07-08
+
+### Fixed
+
+- CloakBrowser default privacy-first browser backend across all adapters (ADR 0003).
+
+## [0.2.5] - 2026-07-08
+
+### Fixed
+
+- CloakBrowser default privacy-first browser backend across all adapters (ADR 0003).
+
+## [0.2.4] - 2026-07-08
+
 ### Added
 
 - CloakBrowser as the default privacy-first browser backend for every provider.
@@ -17,6 +32,7 @@ All notable changes to this module will be documented in this file.
   `RLDYOUR_SKIP_CLOAKBROWSER=1`.
 
 ### Fixed
+- CloakBrowser default privacy-first browser backend across all adapters (ADR 0003).
 - CloakBrowser daemon on headless Ubuntu servers: enable `systemd` linger
   so the `--user` service boot-starts without an active login session.
 
@@ -24,7 +40,6 @@ All notable changes to this module will be documented in this file.
   toolchain directories after macOS `/etc/zprofile` runs `path_helper`, so
   `zsh -l -c` (the Codex/OpenCode agent path) resolves the Homebrew/keg
   toolchain (e.g. `clangd`) instead of the older `/usr/bin` system stubs.
-
 
 ## [0.2.3] - 2026-07-07
 
