@@ -17,6 +17,8 @@ All notable changes to this module will be documented in this file.
   `RLDYOUR_SKIP_CLOAKBROWSER=1`.
 
 ### Fixed
+- CloakBrowser daemon on headless Ubuntu servers: enable `systemd` linger
+  so the `--user` service boot-starts without an active login session.
 
 - Login-shell PATH precedence: the managed `.zprofile` re-asserts the user
   toolchain directories after macOS `/etc/zprofile` runs `path_helper`, so
