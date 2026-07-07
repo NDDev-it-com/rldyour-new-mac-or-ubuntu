@@ -182,7 +182,8 @@ jobs:
           # only the checksum file itself.
           cd dist
           rm -f SHA256SUMS
-          ls -1 | LC_ALL=C sort | grep -v '^SHA256SUMS$' | xargs sha256sum > SHA256SUMS
+          mapfile -t assets < <(find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+          sha256sum "${assets[@]}" > SHA256SUMS
 
       - name: Attest release bundle
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
