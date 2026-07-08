@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: NDDev-it-com/nddev-ci-workflows/.github/workflows/public-dependency-review.yml@86f3e6d70a632561527379e5f962f57de81eb751 # 0.2.4
+    uses: NDDev-it-com/nddev-ci-workflows/.github/workflows/public-dependency-review.yml@1acba687361415b3f5942acceb40b228bb0387fd # 0.2.4
     with:
       fail_on_severity: high
       vulnerability_check: true
