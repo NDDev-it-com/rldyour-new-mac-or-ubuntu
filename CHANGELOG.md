@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.2.8] - 2026-07-08
+
+### Added
+
+- Full Ubuntu LSP parity, gcloud CLI, server/desktop profiles, optional personal apps
+
 ## [0.2.7] - 2026-07-08
 
 ### Added
