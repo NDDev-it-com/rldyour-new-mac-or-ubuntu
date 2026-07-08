@@ -3,11 +3,25 @@
 ## 1) План установки
 
 - `bash scripts/bootstrap.sh --platform macos`
-- `bash scripts/bootstrap.sh --platform ubuntu`
+- `bash scripts/bootstrap.sh --platform ubuntu` (профиль по умолчанию: `server`)
+- `bash scripts/bootstrap.sh --platform ubuntu --profile desktop`
 - `bash scripts/bootstrap.sh --platform macos --apply`
-- `bash scripts/bootstrap.sh --platform ubuntu --apply`
+- `bash scripts/bootstrap.sh --platform ubuntu --apply` (server, headless)
+- `bash scripts/bootstrap.sh --platform ubuntu --profile desktop --apply`
 - `bash scripts/ci/validate.sh` (CI-safe check)
 - `bash scripts/ci/lint.sh` (shell syntax + shellcheck for all installer scripts)
+
+## 1a) Профили: server vs desktop (`--profile`, 0.2.8)
+
+Профиль ортогонален ОС: `--profile server|desktop`. По умолчанию `auto` -
+macOS всегда `desktop` (это GUI-воркстейшн), Ubuntu по умолчанию `server`.
+
+- **server** (headless Ubuntu): полный terminal-first CLI-стек - shell, `starship`,
+  `atuin`, `tmux`, `zoxide`, `fzf`, `carapace`, все CLI dev-инструменты, LSP, AI CLI,
+  browser/CloakBrowser слой. **Без GUI-приложений.** Сервер полноценно работает в терминале.
+- **desktop**: слой `server` **плюс** GUI-desktop-слой - терминал-эмулятор (Ghostty:
+  на macOS через Homebrew cask, на Ubuntu через snap, best-effort) и Nerd-шрифт
+  (JetBrainsMono Nerd Font). macOS поддерживает только `desktop`.
 
 ## 2) Наборы зависимостей
 
@@ -72,6 +86,9 @@
 - `fd`, `eza`, `bat`, `xh`, `git-delta` (delta)
 - `watchexec`, `hyperfine`, `just`
 - `jq`, `prettier`, `pandoc`, `kubeconform`, `mise`
+- search / data / http / repo (0.2.8): `ripgrep` (rg), `yq`, `dasel`, `miller` (mlr),
+  `httpie`, `ghq`, `cargo-nextest`, `github-mcp-server`
+- Deno JS/TS runtime (0.2.8): `deno`
 
 #### Терминальный слой (0.2.3)
 
@@ -92,9 +109,9 @@
 
 #### AI CLI рантаймы
 
-- `claude-code` -> `@anthropic-ai/claude-code@2.1.202`
+- `claude-code` -> `@anthropic-ai/claude-code@2.1.204`
 - `codex` -> `@openai/codex@0.142.5`
-- `opencode` -> `opencode-ai@1.17.14`
+- `opencode` -> `opencode-ai@1.17.15`
 - `agy` -> `https://antigravity.google/cli/install.sh`
 - `mimo` -> `@mimo-ai/cli@0.1.4`
 
@@ -171,9 +188,9 @@
 
 #### AI CLI рантаймы
 
-- `claude-code` -> `@anthropic-ai/claude-code@2.1.202`
+- `claude-code` -> `@anthropic-ai/claude-code@2.1.204`
 - `codex` -> `@openai/codex@0.142.5`
-- `opencode` -> `opencode-ai@1.17.14`
+- `opencode` -> `opencode-ai@1.17.15`
 - `agy` -> `https://antigravity.google/cli/install.sh`
 - `mimo` -> `@mimo-ai/cli@0.1.4`
 
@@ -182,6 +199,8 @@
 - `pyright` (поставляет оба бинарника: `pyright` и `pyright-langserver`)
 - `ruff`
 - `pytest`
+- `ty` (Astral type-checker; macOS-паритет, 0.2.8)
+- `cmake-language-server` (macOS-паритет, 0.2.8)
 
 #### LSP / терминальные language-серверы (bun global)
 
@@ -197,6 +216,32 @@
 - `rust-analyzer` (через `rustup component add`)
 - `gopls` (через apt)
 - `clangd` (через apt)
+
+#### macOS-паритет modern-unix (0.2.8)
+
+- apt: `ripgrep`, `httpie`, `miller` (mlr), `qtbase5-dev` (Qt-заголовки для clangd C++/Qt)
+- cargo (best-effort, `ensure_cargo_parity_tools`): `dust`, `procs`, `sd`, `difftastic`
+  (difft), `jaq`, `hyperfine`, `just`, `tealdeer` (tldr), `ast-grep`, `watchexec`,
+  `gping`, `cargo-nextest`, `markdown-oxide` (LSP)
+- официальные install-скрипты (best-effort, `ensure_extra_runtimes`): `deno`
+  (deno.land), `mise` (mise.run), `carapace` (carapace.sh)
+- **gitlab-ci-ls удалён в 0.2.8** (владелец не использует GitLab; паритет с macOS,
+  где он не ставился).
+
+#### Desktop-слой (только `--profile desktop`, 0.2.8)
+
+- Ghostty terminal emulator через `snap install ghostty --classic` (best-effort;
+  на snapless-хостах ставьте kitty/alacritty вручную).
+- JetBrainsMono Nerd Font -> `~/.local/share/fonts` (+ `fc-cache`).
+- Профиль `server` этот слой пропускает намеренно (headless), но получает полный
+  terminal-first CLI-стек.
+
+#### Известные пробелы паритета Ubuntu (честно)
+
+Эти LSP ставятся на macOS через Homebrew, но на Ubuntu пока НЕ имеют надёжного
+apt/uv/cargo-канала и остаются **optional** в `ubuntu/verify.sh` (не ставятся
+автоматически): `terraform-ls`, `helm-ls`, `jdtls` (Java), `kotlin-language-server`,
+`postgres-language-server`. Ставьте вручную при необходимости соответствующего языка.
 
 #### Quality-gate CLI (bun global, где нет apt-пакета)
 
