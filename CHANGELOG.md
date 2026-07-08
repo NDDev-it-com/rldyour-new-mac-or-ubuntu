@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.2.9] - 2026-07-08
+
+### Changed
+
+- Clean release: adopt nddev-ci-workflows 0.3.0 reusable CI and sole-authorship commit policy
+
 ## [0.2.8] - 2026-07-08
 
 ### Added
