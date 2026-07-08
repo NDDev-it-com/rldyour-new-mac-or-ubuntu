@@ -312,6 +312,35 @@ ensure_ghostty() {
   rldyour::run brew install --cask ghostty
 }
 
+# Google Cloud CLI (0.2.8). Cask renamed google-cloud-sdk -> gcloud-cli. Binary: gcloud.
+ensure_gcloud() {
+  rldyour::section "Ensure Google Cloud CLI (gcloud)"
+  if command -v gcloud >/dev/null 2>&1 || brew list --cask gcloud-cli >/dev/null 2>&1; then
+    rldyour::log "ok" "gcloud already installed"
+    return 0
+  fi
+  rldyour::run brew install --cask gcloud-cli
+}
+
+# Optional personal desktop apps (0.2.8): Discord + OBS (casks). Best-effort.
+# Set RLDYOUR_SKIP_PERSONAL_APPS=1 to opt out.
+ensure_personal_apps() {
+  if [ "${RLDYOUR_SKIP_PERSONAL_APPS:-0}" = "1" ]; then
+    rldyour::log "info" "personal desktop apps skipped (RLDYOUR_SKIP_PERSONAL_APPS=1)"
+    return 0
+  fi
+  rldyour::section "Ensure optional personal apps (Discord, OBS)"
+  local cask
+  for cask in discord obs; do
+    if brew list --cask "$cask" >/dev/null 2>&1; then
+      rldyour::log "ok" "$cask already installed"
+    else
+      rldyour::run brew install --cask "$cask" ||
+        rldyour::log "warn" "$cask cask install failed (best-effort)"
+    fi
+  done
+}
+
 install_python_tooling() {
   rldyour::section "Install Python tooling"
   if ! command -v uv >/dev/null 2>&1; then
@@ -490,6 +519,8 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   ensure_clangd
   ensure_zsh_abbr
   ensure_ghostty
+  ensure_gcloud
+  ensure_personal_apps
   rldyour::ensure_git_perf
   rldyour::ensure_git_delta_config
   rldyour::install_terminal_configs "$REPO_ROOT/templates/terminal"

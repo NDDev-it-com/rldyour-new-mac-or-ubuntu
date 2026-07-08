@@ -113,6 +113,7 @@ optional_cmds=(
   "just"
   "gh-actions-language-server"
   "postgres-language-server"
+  "gcloud"
   "chrome-devtools-mcp"
   "playwright-cli"
   "cloak-chromium"

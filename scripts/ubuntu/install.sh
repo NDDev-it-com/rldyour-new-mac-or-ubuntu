@@ -653,6 +653,179 @@ install_desktop_layer() {
     rldyour::run sudo snap install ghostty --classic ||
       rldyour::log "warn" "ghostty snap install failed (best-effort; try kitty/alacritty via apt)"
   fi
+
+  # Optional personal desktop apps (0.2.8): Discord + OBS Studio via snap.
+  # Best-effort; skipped without snap. Set RLDYOUR_SKIP_PERSONAL_APPS=1 to opt out.
+  if [ "${RLDYOUR_SKIP_PERSONAL_APPS:-0}" = "1" ]; then
+    rldyour::log "info" "personal desktop apps skipped (RLDYOUR_SKIP_PERSONAL_APPS=1)"
+  elif ! command -v snap >/dev/null 2>&1; then
+    rldyour::log "warn" "snap unavailable; skip Discord/OBS (install manually if desired)"
+  else
+    for snapname in discord obs-studio; do
+      if snap list "$snapname" >/dev/null 2>&1; then
+        rldyour::log "ok" "$snapname already installed"
+      elif [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+        rldyour::log "info" "[DRY-RUN] sudo snap install $snapname"
+      else
+        rldyour::run sudo snap install "$snapname" ||
+          rldyour::log "warn" "$snapname snap install failed (best-effort)"
+      fi
+    done
+  fi
+}
+
+# macOS-parity language servers that ship as brew formulae on macOS but need
+# per-tool channels on Ubuntu (verified against official sources, 0.2.8).
+# All best-effort + idempotent + dry-run aware: a failed download only warns.
+HELM_LS_VERSION="${HELM_LS_VERSION:-v0.5.4}"
+KOTLIN_LS_VERSION="${KOTLIN_LS_VERSION:-1.3.13}"
+POSTGRES_LS_VERSION="${POSTGRES_LS_VERSION:-0.25.5}"
+
+ensure_terraform_ls() {
+  if command -v terraform-ls >/dev/null 2>&1; then
+    rldyour::log "ok" "terraform-ls already installed"
+    return 0
+  fi
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] add HashiCorp apt repo + apt install terraform-ls"
+    return 0
+  fi
+  local codename
+  codename="$(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release 2>/dev/null || lsb_release -cs 2>/dev/null)"
+  if curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg >/dev/null &&
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com ${codename} main" | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null &&
+    sudo apt-get update && sudo -E DEBIAN_FRONTEND=noninteractive apt-get install -y terraform-ls; then
+    rldyour::log "ok" "terraform-ls installed via HashiCorp apt"
+  else
+    rldyour::log "warn" "terraform-ls install failed (best-effort)"
+  fi
+}
+
+ensure_helm_ls() {
+  if command -v helm_ls >/dev/null 2>&1; then
+    rldyour::log "ok" "helm_ls already installed"
+    return 0
+  fi
+  local arch
+  case "$(uname -m)" in
+    x86_64 | amd64) arch=amd64 ;;
+    aarch64 | arm64) arch=arm64 ;;
+    armv7l | armhf) arch=arm ;;
+    *)
+      rldyour::log "warn" "unknown arch for helm-ls; skipping"
+      return 0
+      ;;
+  esac
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] download helm_ls_linux_${arch} ${HELM_LS_VERSION} -> ~/.local/bin/helm_ls"
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  if curl -fsSL "https://github.com/mrjosh/helm-ls/releases/download/${HELM_LS_VERSION}/helm_ls_linux_${arch}" -o "$HOME/.local/bin/helm_ls"; then
+    chmod +x "$HOME/.local/bin/helm_ls"
+    rldyour::log "ok" "helm_ls ${HELM_LS_VERSION} installed"
+  else
+    rldyour::log "warn" "helm_ls install failed (best-effort)"
+  fi
+}
+
+ensure_jdtls() {
+  if command -v jdtls >/dev/null 2>&1; then
+    rldyour::log "ok" "jdtls already installed"
+    return 0
+  fi
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] apt openjdk-21-jdk python3 + Eclipse jdtls snapshot -> ~/.local/share/jdtls"
+    return 0
+  fi
+  sudo -E DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jdk python3 >/dev/null 2>&1 || true
+  local dest="$HOME/.local/share/jdtls"
+  mkdir -p "$dest" "$HOME/.local/bin"
+  if curl -fsSL https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz | tar -xz -C "$dest"; then
+    ln -sf "$dest/bin/jdtls" "$HOME/.local/bin/jdtls"
+    rldyour::log "ok" "jdtls (Eclipse snapshot) installed -> ~/.local/bin/jdtls"
+  else
+    rldyour::log "warn" "jdtls install failed (best-effort; needs Java 21 + python3)"
+  fi
+}
+
+ensure_kotlin_ls() {
+  if command -v kotlin-language-server >/dev/null 2>&1; then
+    rldyour::log "ok" "kotlin-language-server already installed"
+    return 0
+  fi
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] apt openjdk-21-jre + kotlin-language-server ${KOTLIN_LS_VERSION} server.zip -> ~/.local/share"
+    return 0
+  fi
+  sudo -E DEBIAN_FRONTEND=noninteractive apt-get install -y unzip openjdk-21-jre >/dev/null 2>&1 || true
+  local dest="$HOME/.local/share/kotlin-language-server"
+  mkdir -p "$HOME/.local/bin"
+  if curl -fsSL "https://github.com/fwcd/kotlin-language-server/releases/download/${KOTLIN_LS_VERSION}/server.zip" -o /tmp/kls.zip &&
+    rm -rf "$dest" && mkdir -p "$dest" && unzip -q -o /tmp/kls.zip -d "$dest"; then
+    ln -sf "$dest/server/bin/kotlin-language-server" "$HOME/.local/bin/kotlin-language-server"
+    rm -f /tmp/kls.zip
+    rldyour::log "ok" "kotlin-language-server ${KOTLIN_LS_VERSION} installed"
+  else
+    rldyour::log "warn" "kotlin-language-server install failed (best-effort)"
+  fi
+}
+
+ensure_postgres_ls() {
+  if command -v postgres-language-server >/dev/null 2>&1; then
+    rldyour::log "ok" "postgres-language-server already installed"
+    return 0
+  fi
+  local target
+  case "$(uname -m)" in
+    x86_64 | amd64) target=x86_64-unknown-linux-gnu ;;
+    aarch64 | arm64) target=aarch64-unknown-linux-gnu ;;
+    *)
+      rldyour::log "warn" "unknown arch for postgres-language-server; skipping"
+      return 0
+      ;;
+  esac
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] download postgres-language-server_${target} ${POSTGRES_LS_VERSION} -> ~/.local/bin"
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  if curl -fsSL "https://github.com/supabase-community/postgres-language-server/releases/download/${POSTGRES_LS_VERSION}/postgres-language-server_${target}" -o "$HOME/.local/bin/postgres-language-server"; then
+    chmod +x "$HOME/.local/bin/postgres-language-server"
+    rldyour::log "ok" "postgres-language-server ${POSTGRES_LS_VERSION} installed"
+  else
+    rldyour::log "warn" "postgres-language-server install failed (best-effort)"
+  fi
+}
+
+# Full macOS-parity LSP set on Ubuntu (0.2.8): closes the previously-documented gap.
+ensure_parity_lsps() {
+  rldyour::section "Install macOS-parity language servers (best-effort)"
+  ensure_terraform_ls
+  ensure_helm_ls
+  ensure_jdtls
+  ensure_kotlin_ls
+  ensure_postgres_ls
+}
+
+# Google Cloud CLI via the official apt repo (0.2.8). Binary: gcloud.
+ensure_gcloud() {
+  rldyour::section "Install Google Cloud CLI (gcloud)"
+  if command -v gcloud >/dev/null 2>&1; then
+    rldyour::log "ok" "gcloud already installed"
+    return 0
+  fi
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] add packages.cloud.google.com apt repo + apt install google-cloud-cli"
+    return 0
+  fi
+  if curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg &&
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null &&
+    sudo apt-get update && sudo CLOUDSDK_SKIP_PY_COMPILATION=1 DEBIAN_FRONTEND=noninteractive apt-get install -y google-cloud-cli; then
+    rldyour::log "ok" "gcloud (google-cloud-cli) installed"
+  else
+    rldyour::log "warn" "gcloud install failed (best-effort)"
+  fi
 }
 
 run_post_checks() {
@@ -694,6 +867,7 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   install_go_lsp
   ensure_marksman
   ensure_java_and_r
+  ensure_gcloud
 else
   rldyour::log "warn" "system layer skipped by --skip-system"
 fi
@@ -711,6 +885,7 @@ if [ "$SKIP_LSPS" -eq 0 ]; then
   ensure_extended_lsps
   ensure_cargo_parity_tools
   ensure_extra_runtimes
+  ensure_parity_lsps
 else
   rldyour::log "warn" "LSP layer skipped by --skip-lsps"
 fi

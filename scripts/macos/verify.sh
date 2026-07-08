@@ -130,6 +130,7 @@ optional_cmds=(
   "kubeconform"
   "mise"
   "gh-actions-language-server"
+  "gcloud"
   "chrome-devtools-mcp"
   "playwright-cli"
   "cloak-chromium"
