@@ -236,21 +236,21 @@ macOS всегда `desktop` (это GUI-воркстейшн), Ubuntu по ум
 - Профиль `server` этот слой пропускает намеренно (headless), но получает полный
   terminal-first CLI-стек.
 
-#### Полный LSP-паритет Ubuntu (0.2.8) — пробел закрыт
+#### Полный LSP-паритет Ubuntu (0.2.8) - пробел закрыт
 
 Ранее отсутствовавшие LSP теперь ставятся `ensure_parity_lsps` по проверенным
 официальным каналам (best-effort, идемпотентно, dry-run-aware):
 
-- `terraform-ls` — HashiCorp apt repo (`apt.releases.hashicorp.com`).
-- `helm_ls` — GitHub release `helm_ls_linux_<arch>` (mrjosh/helm-ls, pin `v0.5.4`) → `~/.local/bin`.
-- `jdtls` — Eclipse tarball (`download.eclipse.org/jdtls/snapshots`) → `~/.local/share/jdtls`
+- `terraform-ls` - HashiCorp apt repo (`apt.releases.hashicorp.com`).
+- `helm_ls` - GitHub release `helm_ls_linux_<arch>` (mrjosh/helm-ls, pin `v0.5.4`) → `~/.local/bin`.
+- `jdtls` - Eclipse tarball (`download.eclipse.org/jdtls/snapshots`) → `~/.local/share/jdtls`
   (+ `openjdk-21-jdk`, `python3`).
-- `kotlin-language-server` — GitHub release `server.zip` (fwcd, pin `1.3.13`) → `~/.local/share`
+- `kotlin-language-server` - GitHub release `server.zip` (fwcd, pin `1.3.13`) → `~/.local/share`
   (+ `openjdk-21-jre`).
-- `postgres-language-server` — GitHub release binary (supabase-community, pin `0.25.5`) → `~/.local/bin`
+- `postgres-language-server` - GitHub release binary (supabase-community, pin `0.25.5`) → `~/.local/bin`
   (LSP-команда `postgres-language-server lsp-proxy`).
 
-Остаются `optional` в `ubuntu/verify.sh` (установка — best-effort загрузка бинарников,
+Остаются `optional` в `ubuntu/verify.sh` (установка - best-effort загрузка бинарников,
 может транзиентно упасть на конкретном хосте/арх), но ставятся автоматически.
 
 #### Google Cloud CLI (0.2.8)
