@@ -1,7 +1,7 @@
 <!-- Memory Metadata
 Last updated: 2026-07-10
 Last verified: 2026-07-10
-Last commit: ec5416b fix(bootstrap): repair hosted gates and macOS GUI
+Last commit: 03419cc fix(ci): make shell control flow portable
 Scope: README.md, VERSION, CHANGELOG.md, config/rldyour-contract.json, scripts/**, templates/**, tests/**, .github/workflows/**
 Area: RELEASE
 -->
@@ -42,7 +42,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - Existing unmanaged state is preserved. Managed runtime and service publication is content-addressed, health-gated, and rollback-aware.
 
 ## Current State
-- Current product/config version is `0.3.2`.
+- Current product/config version is `0.3.3`.
 - Supported targets are Apple Silicon macOS desktop and Ubuntu 24.04/26.04 desktop/server on amd64 or arm64. Desktop Docker mode is always `none`; server Docker is explicit `none`, `rootful`, or `rootless`.
 - Exact AI pins are Claude Code `2.1.206`, Codex CLI `0.144.1`, OpenCode `1.17.18`, MiMoCode `0.1.5`, and Antigravity `1.1.0` with self-update disabled.
 - The mandatory browser baseline is CloakBrowser `0.4.10`, Chrome DevTools MCP `1.5.0`, Playwright CLI `0.1.17`, and Webwright commit `4a46f282ec37f27d6003cc498a977939d62d9015` on loopback CDP `127.0.0.1:9222`.
@@ -52,7 +52,8 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - `--skip-system` bypasses both the Ubuntu workstation package layer and the composed server baseline/Docker layer before any host inventory probes; normal server plan/apply paths retain their fail-closed checks.
 - macOS GUI mode installs ChatGPT and the separate Codex desktop app through independent Homebrew casks. No-GUI, Ubuntu, and server profiles do not install the Codex desktop app.
 - Local CI entrypoints are `bash scripts/ci/lint.sh` and `bash scripts/ci/validate.sh`.
-- The verified 0.3.2 implementation gate is 58 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, and diff checks. Hosted validation/release jobs provision ShellCheck and ripgrep, while every hosted pytest surface provisions Zsh for terminal portability coverage.
+- Managed shell scripts use explicit conditionals for compound control flow; a static regression test rejects the ambiguous `[ A ] && [ B ] || { fallback; }` form before hosted ShellCheck runs.
+- The verified 0.3.3 implementation gate is 59 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, and diff checks. Hosted validation/release jobs provision ShellCheck and ripgrep, while every hosted pytest surface provisions Zsh for terminal portability coverage.
 
 ## Evidence
 - path:VERSION
@@ -71,6 +72,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - commit:911265b
 - commit:0ec6ec6
 - commit:ec5416b
+- commit:03419cc
 
 ## Do Not Infer
 - Do not infer a successful live GitHub Actions run or release publication from local files. Check GitHub Actions and Releases before claiming live release readiness.
