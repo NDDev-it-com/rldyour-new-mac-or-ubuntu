@@ -55,8 +55,8 @@ rldyour::require_cmd_min_version node 20.19 --version
   rldyour::log "missing" "MiMoCode exact managed version 0.1.5"
   exit 1
 }
-[ "$(agy --version 2>/dev/null | head -n 1)" = "1.1.0" ] || {
-  rldyour::log "missing" "agy exact managed version 1.1.0"
+[ "$(agy --version 2>/dev/null | head -n 1)" = "1.1.1" ] || {
+  rldyour::log "missing" "agy exact managed version 1.1.1"
   exit 1
 }
 rtk --version 2>/dev/null | head -n 1 | grep -Eq '^rtk[[:space:]]+0\.43\.0([[:space:]]|$)' || {

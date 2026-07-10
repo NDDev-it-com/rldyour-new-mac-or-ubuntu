@@ -19,7 +19,7 @@ from typing import Any, NoReturn
 ROOT = Path(__file__).resolve().parents[1]
 OWNER = "rldyour-new-mac-or-ubuntu"
 SCHEMA = "rldyour-browser-runtime-receipt-v1"
-BOOTSTRAP_VERSION = "0.3.6"
+BOOTSTRAP_VERSION = "0.3.7"
 MARKER = "# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1"
 ENDPOINT = "http://127.0.0.1:9222"
 CHROME_VERSION = "1.5.0"
