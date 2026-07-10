@@ -185,6 +185,10 @@ def test_ai_cli_bundle_is_frozen_and_runs_no_lifecycle_scripts() -> None:
     assert "--frozen-lockfile --ignore-scripts" in common
     assert "OpenCode's locked native optional" in common
     assert "ai-cli-runtime-v1" in common
+    assert "@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex" in common
+    assert "@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex" in common
+    assert "@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex" in common
+    assert "unset CODEX_MANAGED_BY_NPM CODEX_MANAGED_BY_BUN CODEX_MANAGED_BY_PNPM CODEX_MANAGED_PACKAGE_ROOT" in common
     for installer in (
         file("scripts/macos/install.sh"),
         file("scripts/ubuntu/install.sh"),
@@ -663,6 +667,8 @@ def test_remote_installers_have_tracked_integrity_roots() -> None:
     assert "astral.sh/uv/install.sh" not in ubuntu
     assert "bun.sh/install" not in ubuntu
     supply = json.loads(file("config/rldyour-contract.json"))["supply_chain"]
+    assert supply["codex_launcher"] == "native-platform-binary"
+    assert supply["codex_package_manager_update_context"] is False
     for value in supply.values():
         if isinstance(value, bool):
             continue

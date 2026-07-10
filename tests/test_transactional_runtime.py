@@ -191,6 +191,9 @@ def install_fake_bun(fake_bin: Path) -> None:
 
         mkdir -p \
           "$cwd/node_modules/.bin" \
+          "$cwd/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin" \
+          "$cwd/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin" \
+          "$cwd/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin" \
           "$cwd/node_modules/opencode-darwin-arm64/bin" \
           "$cwd/node_modules/opencode-linux-arm64/bin" \
           "$cwd/node_modules/opencode-linux-x64/bin" \
@@ -207,6 +210,25 @@ def install_fake_bun(fake_bin: Path) -> None:
         make_version_provider "$cwd/node_modules/.bin/claude" '2.1.206 (Claude Code)'
         make_version_provider "$cwd/node_modules/.bin/codex" 'codex-cli 0.144.1'
         make_version_provider "$cwd/node_modules/.bin/mimo" '0.1.5'
+        make_codex_provider() {
+          provider=$1
+          cat >"$provider" <<'PROVIDER'
+        #!/usr/bin/env bash
+        set -euo pipefail
+        [ -z "${CODEX_MANAGED_BY_NPM+x}" ]
+        [ -z "${CODEX_MANAGED_BY_BUN+x}" ]
+        [ -z "${CODEX_MANAGED_BY_PNPM+x}" ]
+        [ -z "${CODEX_MANAGED_PACKAGE_ROOT+x}" ]
+        printf '%s\n' 'codex-cli 0.144.1'
+        PROVIDER
+          chmod 0755 "$provider"
+        }
+        for provider in \
+          "$cwd/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex" \
+          "$cwd/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex" \
+          "$cwd/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex"; do
+          make_codex_provider "$provider"
+        done
         for provider in \
           "$cwd/node_modules/opencode-darwin-arm64/bin/opencode" \
           "$cwd/node_modules/opencode-linux-arm64/bin/opencode" \
@@ -424,6 +446,31 @@ def test_ai_bundle_is_idempotent_and_bun_failure_preserves_runtime_and_wrappers(
         name: (wrappers / name).read_bytes()
         for name in ("claude", "codex", "opencode", "mimo")
     }
+    codex_wrapper = (wrappers / "codex").read_text(encoding="utf-8")
+    assert "vendor/" in codex_wrapper
+    assert "/bin/codex" in codex_wrapper
+    assert (
+        "unset CODEX_MANAGED_BY_NPM CODEX_MANAGED_BY_BUN "
+        "CODEX_MANAGED_BY_PNPM CODEX_MANAGED_PACKAGE_ROOT"
+    ) in codex_wrapper
+    poisoned_env = os.environ.copy()
+    poisoned_env.update(
+        {
+            "CODEX_MANAGED_BY_NPM": "1",
+            "CODEX_MANAGED_BY_BUN": "1",
+            "CODEX_MANAGED_BY_PNPM": "1",
+            "CODEX_MANAGED_PACKAGE_ROOT": "/unmanaged/codex",
+        }
+    )
+    native_probe = subprocess.run(
+        [str(wrappers / "codex"), "--version"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=poisoned_env,
+    )
+    assert native_probe.returncode == 0, native_probe.stdout + native_probe.stderr
+    assert native_probe.stdout.strip() == "codex-cli 0.144.1"
     runtimes = home / ".local/share/rldyour/ai-cli/runtimes"
     first_runtime = visible_runtimes(runtimes)
     assert len(first_runtime) == 1
