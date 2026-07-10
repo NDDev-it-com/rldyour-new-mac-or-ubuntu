@@ -1,7 +1,7 @@
 <!-- Memory Metadata
 Last updated: 2026-07-10
 Last verified: 2026-07-10
-Last commit: c7fc734 fix(ci): remove unsupported actionlint input
+Last commit: 7b31369 fix(release): restore safe manual dispatch
 Scope: README.md, VERSION, CHANGELOG.md, config/rldyour-contract.json, scripts/**, templates/**, tests/**, .github/workflows/**
 Area: RELEASE
 -->
@@ -36,13 +36,13 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 ## Invariants
 - Installer default mode is plan/dry-run; `--apply` is required for mutation.
 - Runtime pins stay synchronized across README, installer scripts, and contract.
-- Release workflow is tag-driven and must match `VERSION` plus `CHANGELOG.md`.
+- Release automation accepts numeric tag pushes or an exact numeric manual dispatch; both must match `VERSION` plus `CHANGELOG.md` and resolve an immutable exact tag.
 - Public security workflows remain enabled for the public repository posture.
 - Browser automation always resolves through the managed CloakBrowser endpoint; stock-browser fallback and alternate endpoints are rejected.
 - Existing unmanaged state is preserved. Managed runtime and service publication is content-addressed, health-gated, and rollback-aware.
 
 ## Current State
-- Current product/config version is `0.3.4`.
+- Current product/config version is `0.3.5`.
 - Supported targets are Apple Silicon macOS desktop and Ubuntu 24.04/26.04 desktop/server on amd64 or arm64. Desktop Docker mode is always `none`; server Docker is explicit `none`, `rootful`, or `rootless`.
 - Exact AI pins are Claude Code `2.1.206`, Codex CLI `0.144.1`, OpenCode `1.17.18`, MiMoCode `0.1.5`, and Antigravity `1.1.0` with self-update disabled.
 - The mandatory browser baseline is CloakBrowser `0.4.10`, Chrome DevTools MCP `1.5.0`, Playwright CLI `0.1.17`, and Webwright commit `4a46f282ec37f27d6003cc498a977939d62d9015` on loopback CDP `127.0.0.1:9222`.
@@ -54,7 +54,8 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - Local CI entrypoints are `bash scripts/ci/lint.sh` and `bash scripts/ci/validate.sh`.
 - Managed shell scripts use explicit conditionals for compound control flow; a static regression test rejects the ambiguous `[ A ] && [ B ] || { fallback; }` form before hosted ShellCheck runs.
 - Pinned `raven-actions/actionlint` steps rely on supported default workflow discovery. Regression coverage scans every Raven actionlint use and rejects the unsupported `args` input that GitHub would annotate.
-- The verified 0.3.4 implementation gate is 60 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, and diff checks. Hosted validation/release jobs provision ShellCheck and ripgrep, while every hosted pytest surface provisions Zsh for terminal portability coverage.
+- Manual release dispatch maps its version input through the environment, rejects non-canonical numeric SemVer, requires the exact current `origin/main` commit and its successful `bootstrap-gate`, and creates or reuses only an exact non-rewritten tag in a separate least-privilege job. The pinned reusable workflow owns immutable publication; a tag pushed with the scoped `GITHUB_TOKEN` continues in the same dispatch run without recursively triggering the tag-push workflow.
+- The verified 0.3.5 implementation gate is 61 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, root release-policy contract checks, and diff checks. Hosted validation/release jobs provision ShellCheck and ripgrep, while every hosted pytest surface provisions Zsh for terminal portability coverage.
 
 ## Evidence
 - path:VERSION
@@ -75,6 +76,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - commit:ec5416b
 - commit:03419cc
 - commit:c7fc734
+- commit:7b31369
 
 ## Do Not Infer
 - Do not infer a successful live GitHub Actions run or release publication from local files. Check GitHub Actions and Releases before claiming live release readiness.
