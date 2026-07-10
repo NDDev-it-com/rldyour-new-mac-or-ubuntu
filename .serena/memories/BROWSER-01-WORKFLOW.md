@@ -13,6 +13,9 @@ browser-visible validation and debugging workflows
 
 ## Current source of truth
 - `path:README.md`
+- `path:scripts/lib/common.sh`
+- `path:scripts/browser_runtime_integrity.py`
+- `path:scripts/verify-browser-runtime.sh`
 
 ## Last verified
 - date: 2026-07-10
@@ -21,10 +24,15 @@ browser-visible validation and debugging workflows
 
 ## Facts
 - This module installs and verifies the mandatory CloakBrowser backend plus managed Playwright CLI and Chrome DevTools MCP wrappers; browser task routing remains adapter-owned and has no stock-browser fallback.
+- An exact pre-marker rldyour CloakBrowser home, launcher set, and launchd/systemd service may be migrated once through a bounded transaction; any failed handoff preserves the candidate and restores the prior home, wrapper set, and active service state.
+- Browser Node runtimes are published from the frozen Bun lock only after owner and permission validation. Group/world-writable trees are rebuilt into the same content-addressed destination while the rejected tree is retained outside the active namespace.
 
 ## Evidence
 - `commit:25e5b7bbf07ca90192022ac8fb9f300d443b9410`
 - `path:README.md`
+- `path:scripts/lib/common.sh`
+- `path:scripts/browser_runtime_integrity.py`
+- `path:scripts/verify-browser-runtime.sh`
 
 ## Known pitfalls
 - Treat this memory as derived context. Current code, configuration, runtime output, and GitHub state override stale memory text.

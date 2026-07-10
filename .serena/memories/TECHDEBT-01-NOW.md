@@ -38,8 +38,8 @@ Operational watchpoints and boundaries for the bootstrap module.
 - The module owns installation and verification, not adapter-native MCP, command, skill, or task-routing surfaces.
 - Managed shell integration edits only delimited source blocks, backs up pre-existing files, and verifies a fresh login shell. Interactive aliases activate only when their target executable exists.
 - ZCode remains an explicit integrity handoff because upstream publishes no checksum/signature manifest. Ubuntu can install it only with an independently supplied SHA-256.
-- Full apply evidence still requires representative Apple Silicon macOS and Ubuntu 24.04/26.04 hosts with launchd/systemd, real user sessions, and the chosen Docker mode. Container-only CI does not prove SSH reachability, UFW behavior, desktop app launch, or Docker daemon health.
-- No current bootstrap contract/version drift: `VERSION`, contract, scripts, frozen locks, docs, SECURITY, and tests agree on release 0.3.8 and its exact runtime pins.
+- A real Apple Silicon macOS desktop strict apply and an immediate non-interactive idempotent reapply were verified on 2026-07-10, including managed launchd/CDP health and cmux hooks. Representative Ubuntu 24.04/26.04 desktop/server runs with systemd, SSH/UFW, and each selected Docker mode remain required; container-only CI cannot prove those host boundaries.
+- No current bootstrap contract/version drift: `VERSION`, contract, scripts, frozen locks, docs, SECURITY, and tests agree on release 0.3.9 and its exact runtime pins.
 - Historical Webwright runtimes may remain on previously configured devices for preservation, but no managed command, dependency, or config path can execute them.
 
 ## Evidence

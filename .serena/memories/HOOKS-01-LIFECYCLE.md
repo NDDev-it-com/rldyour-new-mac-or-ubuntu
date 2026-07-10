@@ -13,6 +13,8 @@ deterministic hook lifecycle behavior
 
 ## Current source of truth
 - `path:README.md`
+- `path:scripts/macos/install.sh`
+- `path:scripts/auth-handoff.sh`
 
 ## Last verified
 - date: 2026-07-10
@@ -20,11 +22,13 @@ deterministic hook lifecycle behavior
 - checked by: Codex final consistency sync
 
 ## Facts
-- Agent lifecycle hooks are owned by sibling adapter repositories; this module only installs and verifies their runtime prerequisites.
+- Agent lifecycle behavior remains adapter/vendor-owned. On the macOS GUI profile this module non-interactively invokes cmux's vendor installers only for Codex, OpenCode, and Antigravity; it does not run the broad interactive setup or create unrelated agent configurations.
 
 ## Evidence
 - `commit:25e5b7bbf07ca90192022ac8fb9f300d443b9410`
 - `path:README.md`
+- `path:scripts/macos/install.sh`
+- `path:scripts/auth-handoff.sh`
 
 ## Known pitfalls
 - Treat this memory as derived context. Current code, configuration, runtime output, and GitHub state override stale memory text.
