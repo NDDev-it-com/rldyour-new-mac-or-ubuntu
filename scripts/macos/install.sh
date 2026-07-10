@@ -199,10 +199,10 @@ rldyour::ensure_path
   exit 2
 }
 if [ "$RLDYOUR_DRY_RUN" -eq 0 ]; then
-  [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ] || {
+  if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
     rldyour::log "error" "supported macOS apply target is Apple Silicon (arm64)"
     exit 2
-  }
+  fi
 fi
 
 rldyour::section "rldyour-new-mac-or-ubuntu (macOS) installer"

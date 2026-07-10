@@ -533,10 +533,10 @@ install_zcode_desktop() {
 }
 
 install_gui_apps() {
-  [ "$PROFILE" = "desktop" ] && [ "$GUI_ENABLED" -eq 1 ] || {
+  if [ "$PROFILE" != "desktop" ] || [ "$GUI_ENABLED" -ne 1 ]; then
     rldyour::log "info" "GUI application layer disabled"
     return 0
-  }
+  fi
   rldyour::section "Install verified Ubuntu GUI applications"
   apt_install fonts-jetbrains-mono || rldyour::log "warn" "fonts-jetbrains-mono unavailable"
   install_claude_desktop

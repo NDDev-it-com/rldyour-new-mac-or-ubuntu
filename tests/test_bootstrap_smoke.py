@@ -79,6 +79,13 @@ def test_skip_system_covers_ubuntu_server_layer() -> None:
     assert body.index(guard) < body.index("is_supported_ubuntu")
 
 
+def test_managed_scripts_avoid_ambiguous_and_or_control_flow() -> None:
+    ambiguous = re.compile(r"\]\s*&&\s*\[[^\n]*\]\s*\|\|\s*\{")
+    for path in sorted((ROOT / "scripts").rglob("*.sh")):
+        body = path.read_text(encoding="utf-8")
+        assert not ambiguous.search(body), f"ambiguous A && B || fallback in {path}"
+
+
 def test_invalid_profile_combinations_fail_closed() -> None:
     invalid = (
         ("--platform", "ubuntu"),
@@ -96,7 +103,7 @@ def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
     version = file("VERSION").strip()
-    assert contract["adapter"]["version"] == version == "0.3.2"
+    assert contract["adapter"]["version"] == version == "0.3.3"
     assert json.loads(file("templates/ai-cli/package.json"))["version"] == version
     assert json.loads(file("templates/browser/provider/package.json"))["version"] == version
     assert f'version = "{version}"' in file("templates/browser/cloakbrowser-pyproject.toml")

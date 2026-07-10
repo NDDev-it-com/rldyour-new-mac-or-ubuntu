@@ -4,6 +4,14 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-10
+
+### Fixed
+
+- Replace ambiguous `A && B || fallback` control flow in macOS target
+  validation and Ubuntu GUI gating with explicit conditionals, and reject that
+  pattern across all managed shell scripts before hosted ShellCheck runs.
+
 ## [0.3.2] - 2026-07-10
 
 ### Fixed
