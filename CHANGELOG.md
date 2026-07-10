@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.3.9] - 2026-07-10
+
+### Fixed
+
+- Harden exact legacy CloakBrowser migration, runtime integrity, launchd convergence, signer verification, and scoped non-interactive cmux hooks.
+
 ## [0.3.8] - 2026-07-10
 
 ### Fixed
