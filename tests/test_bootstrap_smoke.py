@@ -6,7 +6,6 @@ import subprocess
 import tarfile
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -603,6 +602,23 @@ def test_existing_homebrew_packages_are_never_implicitly_upgraded() -> None:
     assert "brew outdated" not in macos
     assert "preserving installed Homebrew formula" in macos
     assert "preserving installed Homebrew cask" in macos
+    assert "cask_app_path" in macos
+    assert "preserving signed and notarized unmanaged cask destination" in macos
+    assert 'codesign --verify --deep --strict "$app_path"' in macos
+    assert 'spctl --assess --type execute "$app_path"' in macos
+    ensure_cask = re.search(
+        r"^ensure_cask\(\) \{(.*?)(?=^\w[^\n]*\(\) \{)",
+        macos,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert ensure_cask is not None
+    body = ensure_cask.group(1)
+    assert body.index('brew list --cask "$cask"') < body.index(
+        'brew install --cask "$cask"'
+    )
+    assert body.index('verify_existing_cask_app "$cask" "$app_path"') < body.index(
+        'brew install --cask "$cask"'
+    )
 
 
 def test_versioned_native_artifacts_publish_on_the_destination_filesystem() -> None:
