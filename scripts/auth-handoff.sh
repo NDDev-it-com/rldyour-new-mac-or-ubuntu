@@ -79,7 +79,9 @@ Authentication handoff (no credentials are managed by this repository)
    and waits for the returned authorization code.
 
 7. Desktop applications (GUI profiles only)
-   ChatGPT/Codex: open ChatGPT.app and sign in with the intended ChatGPT account.
+   ChatGPT: open ChatGPT.app and sign in with the intended ChatGPT account.
+   Codex app (macOS): open Codex.app and sign in with the intended ChatGPT account.
+   Codex app guide: https://openai.com/index/introducing-the-codex-app/
    Claude Desktop: open Claude.app / claude-desktop and sign in.
    ZCode: https://zcode.z.ai/en/docs/install
    ZCode is manual by default because upstream publishes no checksum manifest.

@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.0`.
+and tests as the executable contract. Current adapter version: `0.3.2`.
 
 ## Composition Invariants
 
@@ -69,9 +69,9 @@ instead of replacing them.
 
 ## GUI And Authentication
 
-- macOS GUI mode: Ghostty, cmux, ChatGPT, Claude Desktop.
-- Ubuntu GUI mode: Claude Desktop. ChatGPT/Codex desktop and cmux have no
-  supported Linux desktop build.
+- macOS GUI mode: Ghostty, cmux, ChatGPT, the separate Codex app, Claude Desktop.
+- Ubuntu GUI mode: Claude Desktop. ChatGPT, Codex, and cmux have no supported
+  Linux desktop build.
 - Server: no GUI layer.
 
 ZCode `3.3.3` is manual by default because upstream publishes no checksum or

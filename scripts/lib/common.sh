@@ -337,10 +337,10 @@ rldyour::_publish_managed_wrapper_set() {
   local -a names=("$@")
   local name rollback_name source destination backup rollback_failed=0 all_current=1
 
-  [ -d "$stage" ] && [ ! -L "$stage" ] || {
+  if [ ! -d "$stage" ] || [ -L "$stage" ]; then
     rldyour::log "error" "wrapper staging directory is invalid: ${stage}"
     return 1
-  }
+  fi
   mkdir -p "$destination_dir" || return 1
   for name in "${names[@]}"; do
     source="$stage/$name"

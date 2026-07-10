@@ -1,6 +1,6 @@
 # Installation And Target Matrix
 
-This guide describes adapter contract `0.3.1`. Use `scripts/bootstrap.sh` as the
+This guide describes adapter contract `0.3.2`. Use `scripts/bootstrap.sh` as the
 public entry point so platform, profile, GUI, Docker, browser, safety, and
 verification settings are composed consistently.
 
@@ -185,19 +185,24 @@ GUI mode installs the verified Homebrew casks for:
 
 - Ghostty;
 - cmux;
-- ChatGPT, which is the supported OpenAI desktop surface and includes Codex
-  mode;
+- ChatGPT;
+- the separate [Codex desktop app](https://openai.com/index/introducing-the-codex-app/),
+  installed through Homebrew's verified `codex-app` cask;
 - Claude Desktop.
 
 `--no-gui` skips these applications while preserving the desktop source/LSP,
 AI CLI, terminal, and browser layers.
 
+Existing casks are preserved without an implicit upgrade. Missing casks use
+Homebrew's verified cask metadata; the repository does not pin mutable desktop
+app versions.
+
 ### Ubuntu Desktop
 
 GUI mode installs Claude Desktop through its verified package channel and the
-desktop font support used by the terminal environment. ChatGPT/Codex desktop
-and cmux do not have supported Linux desktop builds, so their managed CLI
-surfaces remain the supported Ubuntu path.
+desktop font support used by the terminal environment. ChatGPT, Codex, and cmux
+do not have supported Linux desktop builds, so their managed CLI surfaces remain
+the supported Ubuntu path.
 
 Ubuntu server never installs GUI applications.
 

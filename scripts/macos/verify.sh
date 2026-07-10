@@ -69,7 +69,7 @@ playwright-cli --version | grep -Fq "0.1.17"
 rldyour::verify_terminal_environment
 
 if [ "$GUI_ENABLED" -eq 1 ]; then
-  for app in Ghostty cmux ChatGPT Claude; do
+  for app in Ghostty cmux ChatGPT Codex Claude; do
     [ -d "/Applications/${app}.app" ] || {
       rldyour::log "missing" "required GUI app: /Applications/${app}.app"
       exit 1

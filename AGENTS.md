@@ -26,7 +26,7 @@ When prose and implementation disagree, verify the scripts and contract, then
 update the affected documentation in the same change. Do not invent a second
 policy source.
 
-## Contract `0.3.1`
+## Contract `0.3.2`
 
 Ubuntu profile selection is always explicit. Never infer server/rootful Docker
 from `uname=Linux`; require `--profile desktop|server`.
@@ -88,9 +88,9 @@ never be committed.
 
 ## GUI And Integrity Boundaries
 
-- macOS GUI: Ghostty, cmux, ChatGPT, and Claude Desktop.
-- Ubuntu GUI: Claude Desktop; ChatGPT/Codex desktop and cmux have no supported
-  Linux builds.
+- macOS GUI: Ghostty, cmux, ChatGPT, the separate Codex app, and Claude Desktop.
+- Ubuntu GUI: Claude Desktop; ChatGPT, Codex, and cmux have no supported Linux
+  builds.
 - Ubuntu server: no GUI applications.
 
 ZCode `3.3.3` remains manual by default because upstream publishes no checksum

@@ -4,6 +4,20 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-10
+
+### Fixed
+
+- Make `--skip-system` cover the Ubuntu server baseline and Docker layer so
+  validation plans remain non-mutating and independent of hosted-runner Docker
+  inventory without weakening normal server plan/apply safety checks.
+- Make hosted CI deterministic by using an explicit ShellCheck-safe staging
+  predicate, isolating SSH-port tests from the runner's active `ssh.socket`, and
+  provisioning Zsh wherever terminal portability tests execute.
+- Install ChatGPT and the separate Codex desktop app as independent macOS GUI
+  casks while preserving existing cask versions and keeping no-GUI/Linux/server
+  profiles free of unsupported Codex app installation.
+
 ## [0.3.1] - 2026-07-10
 
 ### Fixed

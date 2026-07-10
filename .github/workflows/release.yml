@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends shellcheck ripgrep
+          sudo apt-get install -y --no-install-recommends shellcheck ripgrep zsh
           python3 -m pip install --disable-pip-version-check pytest==9.1.1
 
       - name: Validate release source snapshot

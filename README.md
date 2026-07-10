@@ -5,7 +5,7 @@ Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 
 ## Current Contract
 
-The adapter contract version is `0.3.1`.
+The adapter contract version is `0.3.2`.
 
 - **macOS Apple Silicon:** desktop, GUI or no GUI, Docker `none`, source/LSP
   only.
@@ -145,9 +145,10 @@ browser pages, cookies, storage, and JavaScript execution.
 
 GUI is an overlay on desktop profiles and can be disabled with `--no-gui`.
 
-- macOS GUI mode installs Ghostty, cmux, ChatGPT, and Claude Desktop.
-- Ubuntu GUI mode installs Claude Desktop. ChatGPT/Codex desktop and cmux do
-  not have supported Linux desktop builds; their managed CLIs remain available.
+- macOS GUI mode installs Ghostty, cmux, ChatGPT, the separate Codex desktop
+  app, and Claude Desktop.
+- Ubuntu GUI mode installs Claude Desktop. ChatGPT, Codex, and cmux do not have
+  supported Linux desktop builds; their managed CLIs remain available.
 - Ubuntu server is always headless.
 
 ZCode is manual by default on both platforms because upstream does not publish

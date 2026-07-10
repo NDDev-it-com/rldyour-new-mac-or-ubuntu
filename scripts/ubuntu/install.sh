@@ -541,12 +541,15 @@ install_gui_apps() {
   apt_install fonts-jetbrains-mono || rldyour::log "warn" "fonts-jetbrains-mono unavailable"
   install_claude_desktop
   install_zcode_desktop
-  rldyour::log "info" "ChatGPT/Codex desktop and cmux have no supported Linux desktop build; managed CLIs are installed."
+  rldyour::log "info" "ChatGPT, Codex, and cmux have no supported Linux desktop build; managed CLIs are installed."
 }
 
 run_server_layer() {
   local resolved_user=""
   [ "$PROFILE" = "server" ] || return 0
+  if [ "$SKIP_SYSTEM" -eq 1 ]; then
+    return 0
+  fi
   if ! is_supported_ubuntu; then
     if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
       rldyour::log "info" "[DRY-RUN] Ubuntu server layer: Docker=$DOCKER_MODE, UFW=$ENABLE_UFW, SSH hardening=$HARDEN_SSH, Fail2ban=$WITH_FAIL2BAN"

@@ -54,7 +54,7 @@ BUN_LSP_PACKAGES=(
   gh-actions-language-server
 )
 
-GUI_CASKS=(ghostty cmux chatgpt claude)
+GUI_CASKS=(ghostty cmux chatgpt codex-app claude)
 
 usage() {
   cat <<'EOF'
@@ -141,7 +141,7 @@ install_gui_apps() {
   for cask in "${GUI_CASKS[@]}"; do
     ensure_cask "$cask"
   done
-  rldyour::log "info" "ChatGPT is the supported OpenAI desktop surface and includes Codex mode."
+  rldyour::log "info" "ChatGPT and Codex are installed as separate supported OpenAI desktop applications."
   rldyour::log "warn" "ZCode is not auto-installed because upstream publishes no checksum/signature manifest; see scripts/auth-handoff.sh."
 }
 

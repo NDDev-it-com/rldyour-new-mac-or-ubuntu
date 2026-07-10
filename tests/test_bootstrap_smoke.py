@@ -61,6 +61,22 @@ def test_plan_matrix_is_non_destructive() -> None:
         assert result.returncode == 0, result.stderr + result.stdout
         assert "dry-run" in result.stdout
         assert "CloakBrowser" in result.stdout
+        if "server" in profile:
+            assert "Ubuntu server module" not in result.stdout
+
+
+def test_skip_system_covers_ubuntu_server_layer() -> None:
+    ubuntu = file("scripts/ubuntu/install.sh")
+    match = re.search(
+        r"^run_server_layer\(\) \{(.*?)(?=^\w[^\n]*\(\) \{)",
+        ubuntu,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert match is not None
+    body = match.group(1)
+    guard = 'if [ "$SKIP_SYSTEM" -eq 1 ]; then'
+    assert guard in body
+    assert body.index(guard) < body.index("is_supported_ubuntu")
 
 
 def test_invalid_profile_combinations_fail_closed() -> None:
@@ -79,11 +95,19 @@ def test_invalid_profile_combinations_fail_closed() -> None:
 def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
-    assert contract["adapter"]["version"] == file("VERSION").strip() == "0.3.1"
+    version = file("VERSION").strip()
+    assert contract["adapter"]["version"] == version == "0.3.2"
+    assert json.loads(file("templates/ai-cli/package.json"))["version"] == version
+    assert json.loads(file("templates/browser/provider/package.json"))["version"] == version
+    assert f'version = "{version}"' in file("templates/browser/cloakbrowser-pyproject.toml")
+    assert f'version = "{version}"' in file("templates/browser/cloakbrowser-uv.lock")
+    for path in ("README.md", "AGENTS.md", ".claude/CLAUDE.md", "docs/install.md", "SECURITY.md"):
+        assert version in file(path), f"{path} missing adapter version {version}"
     assert contract["targets"]["macos"]["architectures"] == ["arm64"]
     assert contract["targets"]["ubuntu"]["releases"] == ["24.04", "26.04"]
     assert contract["targets"]["ubuntu"]["profiles"]["server"]["default_docker_mode"] == "rootful"
     assert contract["targets"]["ubuntu"]["profiles"]["desktop"]["docker_modes"] == ["none"]
+    assert {"chatgpt", "codex-app"}.issubset(contract["gui"]["macos"])
     assert contract["runtime_support"]["ubuntu_node_lts"] == "24.18.0"
     assert set(contract["runtime_support"]["ubuntu_node_sha256"]) == {"x64", "arm64"}
     assert contract["runtime_support"]["ubuntu_uv"] == "0.11.28"
@@ -145,6 +169,7 @@ def test_ai_cli_bundle_is_frozen_and_runs_no_lifecycle_scripts() -> None:
 
 def test_desktop_manifests_exclude_project_runtime_and_docker() -> None:
     macos = parse_array(file("scripts/macos/install.sh"), "BREW_SOURCE_PACKAGES")
+    gui_casks = parse_array(file("scripts/macos/install.sh"), "GUI_CASKS")
     ubuntu = parse_array(file("scripts/ubuntu/install.sh"), "APT_SOURCE_PACKAGES")
     forbidden_macos = {"docker", "docker-desktop", "go", "rustup", "dart", "cmake", "openjdk", "mise", "deno", "cargo-nextest"}
     forbidden_ubuntu = {"docker.io", "docker-ce", "build-essential", "golang-go", "rustc", "cargo", "dart", "cmake", "default-jdk", "r-base"}
@@ -152,6 +177,7 @@ def test_desktop_manifests_exclude_project_runtime_and_docker() -> None:
     assert ubuntu.isdisjoint(forbidden_ubuntu)
     assert "llvm" in macos  # Homebrew's supported clangd distribution only.
     assert "docker-language-server" in macos
+    assert {"chatgpt", "codex-app"}.issubset(gui_casks)
     assert "dockerfile-language-server-nodejs" in parse_array(file("scripts/ubuntu/install.sh"), "BUN_LSP_PACKAGES")
     cloak_runtime = parse_array(file("scripts/ubuntu/install.sh"), "APT_CLOAK_RUNTIME_PACKAGES")
     for dependency in ("libnss3", "libgbm1", "libgtk-3-0t64", "fonts-liberation"):
@@ -598,6 +624,8 @@ def test_auth_handoff_contains_all_manual_boundaries() -> None:
     for marker in (
         "gh auth login",
         "codex login --device-auth",
+        "open ChatGPT.app",
+        "open Codex.app",
         "claude auth login",
         "opencode auth login",
         "mimo",
@@ -735,6 +763,8 @@ rldyour::ubuntu_server::reload_ssh_authentication
 def test_ssh_port_detection_uses_privileged_read_only_probe() -> None:
     script = r'''
 source "$1"
+systemctl() { return 1; }
+sshd() { return 0; }
 rldyour::ubuntu_server::probe_as_root() {
   [ "$1 $2" = "sshd -T" ] || exit 9
   printf 'port 2202\n'
@@ -761,10 +791,23 @@ def test_browser_owned_templates_and_files_are_preserved_fail_closed() -> None:
 
 def test_no_gui_mode_is_distinct_from_server_role() -> None:
     bootstrap = file("scripts/bootstrap.sh")
+    macos = file("scripts/macos/install.sh")
     assert "export RLDYOUR_GUI_ENABLED=1" in bootstrap
     assert "export RLDYOUR_GUI_ENABLED=0" in bootstrap
     assert 'RLDYOUR_LOCAL_EXECUTION_POLICY="source-lsp-only"' in bootstrap
     assert 'RLDYOUR_LOCAL_EXECUTION_POLICY="server-build-runtime"' in bootstrap
+    install_gui = re.search(
+        r"^install_gui_apps\(\) \{(.*?)(?=^\w[^\n]*\(\) \{)",
+        macos,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert install_gui is not None
+    body = install_gui.group(1)
+    assert body.index('if [ "$GUI_ENABLED" -ne 1 ]; then') < body.index(
+        'for cask in "${GUI_CASKS[@]}"'
+    )
+    assert "codex-app" in parse_array(macos, "GUI_CASKS")
+    assert "for app in Ghostty cmux ChatGPT Codex Claude" in file("scripts/macos/verify.sh")
 
 
 def test_reusable_ci_is_pinned_to_current_ci_workflows_release() -> None:
@@ -778,7 +821,7 @@ def test_reusable_ci_is_pinned_to_current_ci_workflows_release() -> None:
     assert found >= 8
 
 
-def test_hosted_validation_provisions_local_validator_prerequisites() -> None:
+def test_hosted_workflows_provision_local_validator_prerequisites() -> None:
     for workflow in (
         ".github/workflows/ci.yml",
         ".github/workflows/validate.yml",
@@ -786,6 +829,9 @@ def test_hosted_validation_provisions_local_validator_prerequisites() -> None:
     ):
         body = file(workflow)
         assert "ripgrep" in body, f"{workflow} must provision rg explicitly"
+    for workflow in (".github/workflows/pytest.yml", ".github/workflows/release.yml"):
+        body = file(workflow)
+        assert "zsh" in body, f"{workflow} must provision zsh for terminal portability tests"
 
 
 def test_dependency_check_enforces_frozen_ai_and_antigravity_channels() -> None:

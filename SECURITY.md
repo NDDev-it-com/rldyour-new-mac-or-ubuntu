@@ -8,7 +8,7 @@ reviewed commit and the matching versioned contract.
 
 | Version | Supported |
 | --- | --- |
-| Current exact version `0.3.1` | yes |
+| Current exact version `0.3.2` | yes |
 | Older patch, minor, or major versions | no |
 
 ## Reporting A Vulnerability
