@@ -11,6 +11,9 @@ reviewed commit and the matching versioned contract.
 | Current exact tag `0.3.6` | yes |
 | Older patch, minor, or major versions | no |
 
+The `0.3.x` release-line label tracks only the latest released patch. The
+supported artifact is always the exact numeric tag named above.
+
 ## Reporting A Vulnerability
 
 Report vulnerabilities privately through

@@ -11,7 +11,7 @@
   },
   "required_status_checks": [
     "bootstrap-gate",
-    "Bootstrap module tests",
+    "bootstrap-pytests / python (3.14)",
     "cross-platform smoke (ubuntu-latest) / smoke (ubuntu-latest)",
     "cross-platform smoke (windows-latest) / smoke (windows-latest)",
     "cross-platform smoke (macos-latest) / smoke (macos-latest)",
