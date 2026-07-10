@@ -2,7 +2,7 @@
   "schema_version": 2,
   "adapter": {
     "id": "new-mac-or-ubuntu",
-    "version": "0.3.9"
+    "version": "0.3.10"
   },
   "verified_on": "2026-07-10",
   "targets": {
@@ -120,6 +120,8 @@
     "antigravity_linux_x64_sha512": "fcebad8247e0453097e2b26d839371c88df040e6fb18fac3fd8072851194739cf4624041469b57f529bc9c2e1140a6ce4cd5e7144e64e6efc5605a9f10a862b7",
     "antigravity_linux_arm64_sha512": "6d3d89c7b88d4e22e2eef937ce731345299657ac7a14236a93a5f9dce67eb7251845ccc9804b0ab1881125ff6165311ce73c6933c1376ec3b966659a94753e60",
     "antigravity_auto_update": false,
+    "codex_launcher": "native-platform-binary",
+    "codex_package_manager_update_context": false,
     "rtk_artifact_version": "0.43.0",
     "rtk_macos_arm64_sha256": "8a17e49acbd378997eb21d0eb6f7f861111f35b4fc9b1c74edf4c7448e576c65",
     "rtk_linux_x64_sha256": "ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609",
