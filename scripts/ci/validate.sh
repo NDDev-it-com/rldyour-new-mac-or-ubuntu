@@ -55,6 +55,11 @@ if (
     browser.get('disabled_wrapper'),
 ) != ('retired-fail-closed', False, 'webwright'):
     raise SystemExit('Webwright retirement contract is incomplete')
+supply_chain = data.get('supply_chain', {})
+if supply_chain.get('codex_launcher') != 'native-platform-binary':
+    raise SystemExit('Codex must launch the frozen platform-native binary')
+if supply_chain.get('codex_package_manager_update_context') is not False:
+    raise SystemExit('Codex package-manager update provenance must be disabled')
 print(f'contract-ok:{adapter_id}')
 PY
 

@@ -412,7 +412,7 @@ rldyour::install_ai_cli_bundle() {
   local marker="$home/.rldyour-ai-cli-runtime"
   local common_dir root_dir template_dir manifest_source lock_source
   local runtime_label content_id runtime_name destination runtime_marker stage=""
-  local opencode_relative claude_bin codex_bin opencode_bin mimo_bin actual
+  local opencode_relative codex_relative claude_bin codex_bin opencode_bin mimo_bin actual
   local source_path provider wrapper_spec wrapper_name provider_q wrapper_env
   local wrapper_stage="" wrapper_marker="# Managed by rldyour-new-mac-or-ubuntu: ai-cli-runtime-v1"
   common_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -468,14 +468,21 @@ rldyour::install_ai_cli_bundle() {
 # Frozen AI CLI packages; user configuration and credentials live elsewhere.
 MARKER
 
+  # Contract: codex_launcher=native-platform-binary. The npm package's JS shim
+  # injects package-manager update provenance that is invalid for this frozen,
+  # content-addressed bundle, so the managed wrapper uses the shipped native
+  # executable and clears any inherited provenance instead.
   case "$(uname -s):$(uname -m)" in
     Darwin:arm64)
       opencode_relative="node_modules/opencode-darwin-arm64/bin/opencode"
+      codex_relative="node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex"
       ;;
     Linux:aarch64|Linux:arm64)
       opencode_relative="node_modules/opencode-linux-arm64/bin/opencode"
+      codex_relative="node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex"
       ;;
     Linux:x86_64|Linux:amd64)
+      codex_relative="node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex"
       if grep -Eq '(^|[[:space:]])avx2([[:space:]]|$)' /proc/cpuinfo 2>/dev/null; then
         opencode_relative="node_modules/opencode-linux-x64/bin/opencode"
       else
@@ -523,7 +530,7 @@ RUNTIME
       return 1
     fi
     claude_bin="$stage/node_modules/.bin/claude"
-    codex_bin="$stage/node_modules/.bin/codex"
+    codex_bin="$stage/$codex_relative"
     opencode_bin="$stage/$opencode_relative"
     mimo_bin="$stage/node_modules/.bin/mimo"
     for provider in "$claude_bin" "$codex_bin" "$opencode_bin" "$mimo_bin"; do
@@ -537,7 +544,9 @@ RUNTIME
       rldyour::log "error" "staged Claude Code version mismatch: ${actual:-unknown}"
       return 1
     }
-    actual="$("$codex_bin" --version 2>/dev/null | head -n 1)"
+    actual="$(env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN \
+      -u CODEX_MANAGED_BY_PNPM -u CODEX_MANAGED_PACKAGE_ROOT \
+      "$codex_bin" --version 2>/dev/null | head -n 1)"
     [ "$actual" = "codex-cli ${codex_version}" ] || {
       rldyour::log "error" "staged Codex version mismatch: ${actual:-unknown}"
       return 1
@@ -565,7 +574,7 @@ RUNTIME
     return 1
   fi
   claude_bin="$destination/node_modules/.bin/claude"
-  codex_bin="$destination/node_modules/.bin/codex"
+  codex_bin="$destination/$codex_relative"
   opencode_bin="$destination/$opencode_relative"
   mimo_bin="$destination/node_modules/.bin/mimo"
   for provider in "$claude_bin" "$codex_bin" "$opencode_bin" "$mimo_bin"; do
@@ -579,7 +588,9 @@ RUNTIME
     rldyour::log "error" "Claude Code bundle version mismatch: ${actual:-unknown}"
     return 1
   }
-  actual="$("$codex_bin" --version 2>/dev/null | head -n 1)"
+  actual="$(env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN \
+    -u CODEX_MANAGED_BY_PNPM -u CODEX_MANAGED_PACKAGE_ROOT \
+    "$codex_bin" --version 2>/dev/null | head -n 1)"
   [ "$actual" = "codex-cli ${codex_version}" ] || {
     rldyour::log "error" "Codex bundle version mismatch: ${actual:-unknown}"
     return 1
@@ -607,6 +618,8 @@ RUNTIME
     wrapper_env=""
     if [ "$wrapper_name" = "claude" ]; then
       wrapper_env=$'export DISABLE_AUTOUPDATER=1\nexport DISABLE_UPDATES=1'
+    elif [ "$wrapper_name" = "codex" ]; then
+      wrapper_env=$'unset CODEX_MANAGED_BY_NPM CODEX_MANAGED_BY_BUN CODEX_MANAGED_BY_PNPM CODEX_MANAGED_PACKAGE_ROOT'
     fi
     cat >"$wrapper_stage/$wrapper_name" <<WRAPPER
 #!/usr/bin/env bash
