@@ -4,6 +4,15 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-07-10
+
+### Fixed
+
+- Remove the unsupported `args` input from both pinned
+  `raven-actions/actionlint` workflow steps. The action's default file
+  discovery still validates every workflow without emitting GitHub annotation
+  warnings, and regression coverage rejects the unsupported input.
+
 ## [0.3.3] - 2026-07-10
 
 ### Fixed

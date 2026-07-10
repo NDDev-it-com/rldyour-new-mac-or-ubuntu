@@ -103,7 +103,7 @@ def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
     version = file("VERSION").strip()
-    assert contract["adapter"]["version"] == version == "0.3.3"
+    assert contract["adapter"]["version"] == version == "0.3.4"
     assert json.loads(file("templates/ai-cli/package.json"))["version"] == version
     assert json.loads(file("templates/browser/provider/package.json"))["version"] == version
     assert f'version = "{version}"' in file("templates/browser/cloakbrowser-pyproject.toml")
@@ -839,6 +839,26 @@ def test_hosted_workflows_provision_local_validator_prerequisites() -> None:
     for workflow in (".github/workflows/pytest.yml", ".github/workflows/release.yml"):
         body = file(workflow)
         assert "zsh" in body, f"{workflow} must provision zsh for terminal portability tests"
+
+
+def test_raven_actionlint_uses_no_unsupported_args_input() -> None:
+    found = 0
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        lines = workflow.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            if "uses: raven-actions/actionlint@" not in line:
+                continue
+            found += 1
+            use_indent = len(line) - len(line.lstrip())
+            nested_lines = []
+            for nested in lines[index + 1 :]:
+                if nested.strip() and len(nested) - len(nested.lstrip()) < use_indent:
+                    break
+                nested_lines.append(nested)
+            assert not any(
+                re.match(r"^\s*args\s*:", nested) for nested in nested_lines
+            ), f"{workflow.name} passes unsupported args to raven actionlint"
+    assert found > 0
 
 
 def test_dependency_check_enforces_frozen_ai_and_antigravity_channels() -> None:

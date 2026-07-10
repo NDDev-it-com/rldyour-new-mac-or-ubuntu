@@ -144,8 +144,6 @@ jobs:
 
       - name: Lint GitHub workflow YAML files
         uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7
-        with:
-          args: -color .github/workflows/*.yml
 
   bootstrap-gate:
     needs: [bootstrap-script-lint, bootstrap-validate, bootstrap-dryrun-crosscheck, workflow-lint]

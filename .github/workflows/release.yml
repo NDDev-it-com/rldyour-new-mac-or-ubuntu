@@ -70,8 +70,6 @@ jobs:
 
       - name: Validate workflow syntax
         uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7
-        with:
-          args: -color .github/workflows/*.yml
 
   supply-chain:
     needs: resolve
