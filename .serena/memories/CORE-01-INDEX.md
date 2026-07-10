@@ -1,7 +1,7 @@
 <!-- Memory Metadata
-Last updated: 2026-07-07
-Last verified: 2026-07-07
-Last commit: a0e3eb4 feat: 0.2.3 terminal layer for macOS/Ubuntu + release checksum fix (#8)
+Last updated: 2026-07-10
+Last verified: 2026-07-10
+Last commit: 911265b feat: add secure role-aware bootstrap profiles
 Scope: README.md, AGENTS.md, .claude/CLAUDE.md, .serena/project.yml, .serena/memories/**
 Area: CORE
 -->
@@ -32,8 +32,10 @@ Durable Serena memory index for the `rldyour-new-mac-or-ubuntu` bootstrap module
 
 ## Current State
 - This module has three tracked memories: `CORE-01-INDEX.md`, `RELEASE-01-VALIDATION.md`, and `TECHDEBT-01-NOW.md`.
-- The module is a bootstrap adapter for macOS and Ubuntu dependency installation and verification, and since 0.2.3 it also owns the terminal layer (shell stack, TUI/CLI wave, and managed zsh/starship templates under `templates/terminal/`).
-- The module does not own AI CLI runtime configuration surfaces; those remain in the sibling adapter modules.
+- The 0.3.0 contract composes Apple Silicon macOS desktop, Ubuntu 24.04/26.04 desktop, and Ubuntu 24.04/26.04 server roles. Desktop roles are source/LSP-only; the Ubuntu server role owns build/runtime and explicit Docker modes.
+- GUI is an optional desktop overlay. Ubuntu server is always headless.
+- The module owns exact AI CLI installation, terminal integration, language-server/tooling installation, and the mandatory CloakBrowser runtime. Native AI CLI configuration remains in sibling adapter repositories.
+- Serena indexes Bash and Python because the implementation is shell-first with Python validators and fault-injection tests.
 
 ## Evidence
 - path:README.md
@@ -42,7 +44,7 @@ Durable Serena memory index for the `rldyour-new-mac-or-ubuntu` bootstrap module
 - path:.serena/project.yml
 - path:.serena/memories/RELEASE-01-VALIDATION.md
 - path:.serena/memories/TECHDEBT-01-NOW.md
-- commit:a0e3eb4
+- commit:911265b
 
 ## Do Not Infer
 - Do not infer current dependency versions, release state, GitHub settings, or CI status from this index; read the source files and live GitHub state.
