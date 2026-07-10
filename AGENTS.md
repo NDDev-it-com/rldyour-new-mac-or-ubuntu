@@ -26,7 +26,7 @@ When prose and implementation disagree, verify the scripts and contract, then
 update the affected documentation in the same change. Do not invent a second
 policy source.
 
-## Contract `0.3.6`
+## Contract `0.3.7`
 
 Ubuntu profile selection is always explicit. Never infer server/rootful Docker
 from `uname=Linux`; require `--profile desktop|server`.
@@ -54,7 +54,7 @@ operator documentation:
 - Codex: `@openai/codex@0.144.1`
 - OpenCode: `opencode-ai@1.17.18`
 - MiMoCode: `@mimo-ai/cli@0.1.5`
-- Antigravity (`agy`): exact `1.1.0`, self-update disabled
+- Antigravity (`agy`): exact `1.1.1`, self-update disabled
 - RTK: exact `0.43.0`, hash-pinned native artifact
 - CloakBrowser: `0.4.10`
 - Chrome DevTools MCP: `1.5.0`

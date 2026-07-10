@@ -1,6 +1,6 @@
 # Installation And Target Matrix
 
-This guide describes adapter contract `0.3.6`. Use `scripts/bootstrap.sh` as the
+This guide describes adapter contract `0.3.7`. Use `scripts/bootstrap.sh` as the
 public entry point so platform, profile, GUI, Docker, browser, safety, and
 verification settings are composed consistently.
 
@@ -135,12 +135,12 @@ The installers and `config/rldyour-contract.json` must agree on these values:
 | Codex | `@openai/codex` | exact `0.144.1` |
 | OpenCode | `opencode-ai` | exact `1.17.18` |
 | MiMoCode | `@mimo-ai/cli` | exact `0.1.5` |
-| Antigravity | generation-pinned native artifact | exact `1.1.0` |
+| Antigravity | generation-pinned native artifact | exact `1.1.1` |
 
 Antigravity is installed from a generation-pinned platform artifact whose
 SHA-512 is tracked in the contract. The managed launcher exports
 `AGY_CLI_DISABLE_AUTO_UPDATE=true`, so the verified binary cannot silently move
-away from `1.1.0`.
+away from `1.1.1`.
 
 Claude Code is also update-locked: both `DISABLE_AUTOUPDATER=1` and
 `DISABLE_UPDATES=1` are exported by its managed wrapper and the managed shell

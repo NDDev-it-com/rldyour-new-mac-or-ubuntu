@@ -5,13 +5,13 @@ Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 
 ## Current Baseline
 
-The adapter contract version is `0.3.6`.
+The adapter contract version is `0.3.7`.
 
 | Field | Value |
 | --- | --- |
-| Adapter version | `0.3.6` |
+| Adapter version | `0.3.7` |
 | Runtime baseline | macOS arm64 and Ubuntu 24.04/26.04 amd64/arm64 |
-| GitHub release tag | `0.3.6` |
+| GitHub release tag | `0.3.7` |
 
 ## What This Repository Provides
 
@@ -55,7 +55,7 @@ mode. macOS does not support the server profile.
 | Codex | `0.144.1` |
 | OpenCode | `1.17.18` |
 | MiMoCode | `0.1.5` |
-| Antigravity (`agy`) | exact `1.1.0`, self-update disabled |
+| Antigravity (`agy`) | exact `1.1.1`, self-update disabled |
 | RTK output compressor | exact `0.43.0`, hash-pinned artifact |
 
 The exact sources of truth are `config/rldyour-contract.json`,

@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.6`.
+and tests as the executable contract. Current adapter version: `0.3.7`.
 
 ## Composition Invariants
 
@@ -34,7 +34,7 @@ profile; Ubuntu server is always headless.
 - Codex `0.144.1`
 - OpenCode `1.17.18`
 - MiMoCode `0.1.5`
-- Antigravity (`agy`) exact `1.1.0`, self-update disabled
+- Antigravity (`agy`) exact `1.1.1`, self-update disabled
 - RTK exact `0.43.0`, hash-pinned native artifact
 - CloakBrowser `0.4.10`
 - Chrome DevTools MCP `1.5.0`

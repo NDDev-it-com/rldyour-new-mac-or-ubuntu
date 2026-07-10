@@ -8,7 +8,7 @@ reviewed commit and the matching versioned contract.
 
 | Version | Supported |
 | --- | --- |
-| Current exact tag `0.3.6` | yes |
+| Current exact tag `0.3.7` | yes |
 | Older patch, minor, or major versions | no |
 
 The `0.3.x` release-line label tracks only the latest released patch. The
@@ -158,7 +158,7 @@ policy.
   installed only over an empty Docker/containerd state.
 
 The current managed AI baseline is Claude Code `2.1.206`, Codex `0.144.1`,
-OpenCode `1.17.18`, MiMoCode `0.1.5`, and Antigravity (`agy`) exact `1.1.0`.
+OpenCode `1.17.18`, MiMoCode `0.1.5`, and Antigravity (`agy`) exact `1.1.1`.
 The supporting RTK output compressor is exact `0.43.0`.
 
 ZCode is manual by default because upstream publishes no checksum or signature
