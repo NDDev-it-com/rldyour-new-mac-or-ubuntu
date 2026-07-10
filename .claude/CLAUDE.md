@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.7`.
+and tests as the executable contract. Current adapter version: `0.3.8`.
 
 ## Composition Invariants
 
