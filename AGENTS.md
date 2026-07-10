@@ -26,7 +26,7 @@ When prose and implementation disagree, verify the scripts and contract, then
 update the affected documentation in the same change. Do not invent a second
 policy source.
 
-## Contract `0.3.9`
+## Contract `0.3.10`
 
 Ubuntu profile selection is always explicit. Never infer server/rootful Docker
 from `uname=Linux`; require `--profile desktop|server`.
@@ -70,6 +70,10 @@ unfrozen dependency resolution. Registry-backed AI CLIs use
 `templates/ai-cli/bun.lock` with lifecycle scripts disabled. The Node browser
 providers use `templates/browser/provider/bun.lock`; CloakBrowser uses its
 tracked `uv.lock`.
+
+Codex must launch the lock-installed platform-native binary, not its package-
+manager JS shim. The managed wrapper removes inherited npm/Bun/pnpm provenance
+so diagnostics and update actions cannot target an unrelated global prefix.
 
 ## Non-Negotiable Browser Boundary
 

@@ -5,13 +5,13 @@ Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 
 ## Current Baseline
 
-The adapter contract version is `0.3.9`.
+The adapter contract version is `0.3.10`.
 
 | Field | Value |
 | --- | --- |
-| Adapter version | `0.3.9` |
+| Adapter version | `0.3.10` |
 | Runtime baseline | macOS arm64 and Ubuntu 24.04/26.04 amd64/arm64 |
-| GitHub release tag | `0.3.9` |
+| GitHub release tag | `0.3.10` |
 
 ## What This Repository Provides
 
@@ -65,6 +65,10 @@ Claude's managed launcher and shell environment set both
 `DISABLE_AUTOUPDATER=1` and `DISABLE_UPDATES=1`; Antigravity sets
 `AGY_CLI_DISABLE_AUTO_UPDATE=true`. Exact runtime pins therefore remain under
 repository control instead of drifting through a background or manual updater.
+The Codex launcher executes the lock-installed platform-native binary directly
+and removes inherited npm/Bun/pnpm provenance. This preserves bundled Codex
+resources while preventing diagnostics or update actions from targeting an
+unrelated global package-manager prefix.
 
 ## Native Boundaries
 

@@ -8,7 +8,7 @@ reviewed commit and the matching versioned contract.
 
 | Version | Supported |
 | --- | --- |
-| Current exact tag `0.3.9` | yes |
+| Current exact tag `0.3.10` | yes |
 | Older patch, minor, or major versions | no |
 
 The `0.3.x` release-line label tracks only the latest released patch. The

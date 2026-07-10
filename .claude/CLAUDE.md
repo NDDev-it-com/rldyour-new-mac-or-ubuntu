@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.9`.
+and tests as the executable contract. Current adapter version: `0.3.10`.
 
 ## Composition Invariants
 
@@ -49,6 +49,8 @@ this file synchronized when a pin changes.
 Do not use mutable unauthenticated installer scripts or live-unlocked dependency
 resolution. Keep the AI CLI and Node-provider `bun.lock` files and the
 CloakBrowser `uv.lock` frozen. AI package lifecycle scripts remain disabled.
+Codex launches its lock-installed platform-native binary and the wrapper removes
+inherited npm/Bun/pnpm provenance; do not restore the package-manager JS shim.
 
 ## Browser Boundary
 

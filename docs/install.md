@@ -1,6 +1,6 @@
 # Installation And Target Matrix
 
-This guide describes adapter contract `0.3.9`. Use `scripts/bootstrap.sh` as the
+This guide describes adapter contract `0.3.10`. Use `scripts/bootstrap.sh` as the
 public entry point so platform, profile, GUI, Docker, browser, safety, and
 verification settings are composed consistently.
 
@@ -337,7 +337,9 @@ uses a hash-verified, signed, and
 notarized package. Claude Code, Codex, OpenCode, and MiMoCode install from a
 tracked `bun.lock` with `--frozen-lockfile --ignore-scripts`; OpenCode runs its
 locked native optional dependency directly instead of executing its fallback
-postinstall. Antigravity uses generation-pinned native archives with tracked
+postinstall. Codex also runs its lock-installed platform-native binary directly;
+the managed wrapper removes inherited npm/Bun/pnpm provenance so diagnostics
+and update behavior cannot target another global prefix. Antigravity uses generation-pinned native archives with tracked
 SHA-512 values and a no-auto-update wrapper. RTK `0.43.0` uses a hash-pinned
 native artifact and tamper-evident launcher. Chrome DevTools MCP and Playwright
 CLI install from a separate tracked `bun.lock` with `--frozen-lockfile`.
