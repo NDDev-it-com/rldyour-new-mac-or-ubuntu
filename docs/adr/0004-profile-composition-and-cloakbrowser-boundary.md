@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-10
+- Amended: 2026-07-10 (Webwright retirement and exact runtime receipts)
 
 ## Context
 
@@ -32,9 +33,15 @@ All browser automation crosses one fail-closed boundary:
 - CloakBrowser is mandatory on every profile.
 - A managed service owns `http://127.0.0.1:9222`; it is never exposed on a
   non-loopback address.
-- Chrome DevTools MCP, Playwright CLI, and Webwright use wrappers that reject
-  alternate executables, endpoints, configuration files, and auto-started
-  stock browsers.
+- Chrome DevTools MCP and Playwright CLI are the only active providers. Their
+  wrappers reject alternate executables, endpoints, configuration files,
+  auto-started stock browsers, and Playwright arbitrary code/file execution.
+- Webwright is retired fail-closed because its arbitrary Python/browser object
+  surface cannot be proven to remain inside this cross-platform boundary. The
+  compatibility command is an exact wrapper that exits `78` without executing
+  Python or starting a browser.
+- Every successful apply publishes an owner-only canonical receipt binding the
+  exact runtime, binary, wrapper, service, source-policy, and live-health state.
 - A missing or unhealthy CloakBrowser endpoint stops browser automation. There
   is no stock Chromium fallback and no compliant `--skip-browser` mode.
 - Production provider pins, repository origins, managed paths, and the signed

@@ -3,9 +3,17 @@
 Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 24.04/26.04 desktops, and headless Ubuntu 24.04/26.04 servers.
 
-## Current Contract
+## Current Baseline
 
-The adapter contract version is `0.3.5`.
+The adapter contract version is `0.3.6`.
+
+| Field | Value |
+| --- | --- |
+| Adapter version | `0.3.6` |
+| Runtime baseline | macOS arm64 and Ubuntu 24.04/26.04 amd64/arm64 |
+| GitHub release tag | `0.3.6` |
+
+## What This Repository Provides
 
 - **macOS Apple Silicon:** desktop, GUI or no GUI, Docker `none`, source/LSP
   only.
@@ -25,8 +33,8 @@ versioned upstream assets with tracked per-architecture SHA-256 values. macOS
 bootstraps Homebrew from its notarized `6.0.9` package. The four registry-backed
 AI CLIs install from a repository-owned Bun lock with lifecycle scripts disabled.
 Antigravity uses a generation-pinned native artifact and disables self-update.
-Browser Node providers, CloakBrowser, and Webwright also use tracked locks with
-frozen artifact hashes.
+Browser Node providers and CloakBrowser also use tracked locks with frozen
+artifact hashes.
 
 Ubuntu tool-host artifacts always install into owned versioned directories
 with archive/hash receipts and managed `~/.local/bin` links. A same-version
@@ -39,7 +47,7 @@ preserved; macOS installs only missing baseline entries.
 The Ubuntu server profile adds the build/runtime baseline and an explicit Docker
 mode. macOS does not support the server profile.
 
-## Managed AI CLI Baseline
+## Active Catalog
 
 | CLI | Managed version |
 | --- | --- |
@@ -58,7 +66,7 @@ Claude's managed launcher and shell environment set both
 `AGY_CLI_DISABLE_AUTO_UPDATE=true`. Exact runtime pins therefore remain under
 repository control instead of drifting through a background or manual updater.
 
-## Managed Terminal Integration
+## Native Boundaries
 
 The bootstrap owns versioned drop-ins under `~/.config/rldyour/` and adds one
 small source block to `~/.zshenv` and `~/.zprofile`. Existing owner content is
@@ -71,7 +79,7 @@ Post-apply verification starts a fresh `zsh -l -c` and proves that
 that directory, the fixed CloakBrowser endpoint is active, forbidden trust
 overrides are unset, and managed updater policy is present.
 
-## Plan And Apply
+## Install / Update / ry-repair
 
 Plan mode is the default and does not mutate the target:
 
@@ -100,6 +108,11 @@ bash scripts/bootstrap.sh --platform ubuntu --profile desktop --apply
 bash scripts/bootstrap.sh --platform ubuntu --profile server --apply
 ```
 
+The same apply command is the supported update and repair path: it revalidates
+owned receipts, preserves unmanaged or user-modified state, and changes only
+missing or contract-divergent managed artifacts. The `ry-repair` workflow must
+use these repository entry points rather than reproducing installation logic.
+
 Run the full Ubuntu bootstrap while logged in as the non-root developer account
 that will own `~/.local`, AI configuration, and the CloakBrowser user service;
 the account must have sudo. Root-only/cloud-init administration may run the
@@ -122,7 +135,7 @@ Browser automation cannot be skipped.
 See [docs/install.md](docs/install.md) for the complete profile, GUI, Docker,
 hardening, verification, and authentication handoff guidance.
 
-## Mandatory Browser Boundary
+## Browser / Design / DevTools Routing
 
 Every profile installs the same fail-closed browser stack:
 
@@ -130,13 +143,22 @@ Every profile installs the same fail-closed browser stack:
 - a managed headless service fixed to `http://127.0.0.1:9222`;
 - Chrome DevTools MCP `1.5.0`;
 - Playwright CLI `0.1.17`;
-- Webwright at commit `4a46f282ec37f27d6003cc498a977939d62d9015`.
+- an exact disabled `webwright` compatibility wrapper that exits `78` without
+  starting Python or a browser.
 
-Managed wrappers force the providers through the fixed loopback CDP endpoint
-and run a health check before browser actions. Alternate executables, endpoints,
-configuration overrides, auto-started stock browsers, and stock Chromium
-fallbacks are rejected. `--skip-browser` and
+The only active providers are Playwright CLI and Chrome DevTools MCP. Managed
+wrappers force both through the fixed loopback CDP endpoint and run the exact
+health check before browser actions. Playwright `run-code` and `--filename`
+escape hatches, alternate executables/endpoints/configuration, auto-started
+stock browsers, and stock Chromium fallbacks are rejected. Every successful
+apply publishes a canonical owner-only runtime receipt; verify it with
+`bash scripts/verify-browser-runtime.sh`. `--skip-browser` and
 `RLDYOUR_SKIP_CLOAKBROWSER=1` are unsupported.
+
+Design and UI work remains source/LSP-only on desktops. Any browser-visible
+validation must route through one of the two active managed providers; embedded
+browser agents, Playwright MCP, raw Playwright, and product-specific browser
+fallbacks are outside this boundary.
 
 The CDP endpoint must remain loopback-only because CDP grants full control over
 browser pages, cookies, storage, and JavaScript execution.
@@ -210,7 +232,7 @@ Existing synchronized, NTP, or PTP time providers are preserved. Fail2ban
 activation validates the live sshd jail and rolls configuration and service
 state back if enablement or restart fails.
 
-## Repository Surfaces
+## Repository Context / Serena Memory
 
 - `scripts/bootstrap.sh` - public profile compositor and entry point.
 - `scripts/macos/install.sh`, `scripts/ubuntu/install.sh` - platform installers.
@@ -224,6 +246,10 @@ state back if enablement or restart fails.
 - `docs/adr/0004-profile-composition-and-cloakbrowser-boundary.md` - profile
   and browser decision.
 - `templates/terminal/`, `templates/browser/` - managed runtime templates.
+- `.serena/memories/CORE-01-INDEX.md` - durable architecture and entry points.
+- `.serena/memories/RELEASE-01-VALIDATION.md` - release and verification facts.
+- `.serena/memories/TECHDEBT-01-NOW.md` - verified current debt only; remove
+  resolved items instead of preserving historical speculation.
 
 ## Validation
 
@@ -240,7 +266,7 @@ Full server verification requires a real Ubuntu VM with systemd. Container-only
 CI cannot prove SSH reachability, firewall exposure, time synchronization, or
 Docker daemon state.
 
-## Release Automation
+## Release / Rollback
 
 Numeric tag pushes remain the primary release path. A manual
 `workflow_dispatch` accepts only the exact numeric value from `VERSION`, must
@@ -250,10 +276,19 @@ creates or rewrites a tag; root release automation is the sole tag creator. The
 pinned reusable supply-chain workflow then publishes one immutable release
 with checksums, an SPDX SBOM, and attestations.
 
-## Security And Support
+Rollback uses a previously reviewed numeric release: check out that tag, run a
+plan, and apply the matching contract. Never move or recreate a published tag,
+and never force-push `main`.
+
+## Security Boundary
 
 No credentials belong in this repository. Runtime-local caches, browser
 profiles, traces, tokens, and authentication state must remain untracked.
+
+See [SECURITY.md](SECURITY.md) for private reporting, supply-chain controls,
+the CDP boundary, and Ubuntu server hardening constraints.
+
+## Support / License
 
 - License: [AGPL-3.0-or-later](LICENSE)
 - Security reports: [GitHub Security Advisories](https://github.com/NDDev-it-com/rldyour-new-mac-or-ubuntu/security/advisories/new)

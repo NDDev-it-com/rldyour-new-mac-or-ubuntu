@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.5`.
+and tests as the executable contract. Current adapter version: `0.3.6`.
 
 ## Composition Invariants
 
@@ -39,22 +39,24 @@ profile; Ubuntu server is always headless.
 - CloakBrowser `0.4.10`
 - Chrome DevTools MCP `1.5.0`
 - Playwright CLI `0.1.17`
-- Webwright `4a46f282ec37f27d6003cc498a977939d62d9015`
+- Webwright retired fail-closed; only the exact disabled compatibility wrapper
+  is published
 - Ubuntu Node.js/uv/Bun `24.18.0` / `0.11.28` / `1.3.14`, immutable assets
   with tracked architecture hashes
 
 Keep the contract, both installers, tests, README, install guide, AGENTS, and
 this file synchronized when a pin changes.
 Do not use mutable unauthenticated installer scripts or live-unlocked dependency
-resolution. Keep the AI CLI and Node-provider `bun.lock` files and both Python
-`uv.lock` files frozen. AI package lifecycle scripts remain disabled.
+resolution. Keep the AI CLI and Node-provider `bun.lock` files and the
+CloakBrowser `uv.lock` frozen. AI package lifecycle scripts remain disabled.
 
 ## Browser Boundary
 
 CloakBrowser is required on every profile. A managed service owns the fixed
-loopback CDP endpoint `http://127.0.0.1:9222`. Repository wrappers force Chrome
-DevTools MCP, Playwright CLI, and Webwright through that endpoint and require
-`cloakbrowser-cdp-health` before browser actions.
+loopback CDP endpoint `http://127.0.0.1:9222`. The two active repository
+wrappers force Chrome DevTools MCP and Playwright CLI through that endpoint and
+require exact live runtime verification before browser actions. Webwright is
+retired fail-closed and must never start Python or a browser.
 
 Fail closed on missing or unhealthy browser state. Do not add or document:
 

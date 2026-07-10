@@ -2,7 +2,7 @@
   "schema_version": 2,
   "adapter": {
     "id": "new-mac-or-ubuntu",
-    "version": "0.3.5"
+    "version": "0.3.6"
   },
   "verified_on": "2026-07-10",
   "targets": {
@@ -89,7 +89,13 @@
     "fallback_allowed": false,
     "chrome_devtools_mcp": "1.5.0",
     "playwright_cli": "0.1.17",
-    "webwright_commit": "4a46f282ec37f27d6003cc498a977939d62d9015"
+    "active_providers": [
+      "playwright-cli",
+      "chrome-devtools-mcp"
+    ],
+    "webwright_status": "retired-fail-closed",
+    "webwright_enabled": false,
+    "disabled_wrapper": "webwright"
   },
   "gui": {
     "macos": [
@@ -119,8 +125,7 @@
     "rtk_linux_x64_sha256": "ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609",
     "rtk_linux_arm64_sha256": "5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731",
     "browser_provider_lock": "templates/browser/provider/bun.lock",
-    "cloakbrowser_lock": "templates/browser/cloakbrowser-uv.lock",
-    "webwright_lock": "templates/browser/webwright-uv.lock"
+    "cloakbrowser_lock": "templates/browser/cloakbrowser-uv.lock"
   },
   "safety": {
     "default_mode": "plan",

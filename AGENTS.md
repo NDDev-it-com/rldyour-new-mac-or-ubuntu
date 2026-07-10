@@ -26,7 +26,7 @@ When prose and implementation disagree, verify the scripts and contract, then
 update the affected documentation in the same change. Do not invent a second
 policy source.
 
-## Contract `0.3.5`
+## Contract `0.3.6`
 
 Ubuntu profile selection is always explicit. Never infer server/rootful Docker
 from `uname=Linux`; require `--profile desktop|server`.
@@ -59,7 +59,7 @@ operator documentation:
 - CloakBrowser: `0.4.10`
 - Chrome DevTools MCP: `1.5.0`
 - Playwright CLI: `0.1.17`
-- Webwright: `4a46f282ec37f27d6003cc498a977939d62d9015`
+- Webwright: retired fail-closed; publish only the exact disabled wrapper
 - Ubuntu Node.js/uv/Bun: `24.18.0` / `0.11.28` / `1.3.14`, immutable assets
   with tracked architecture hashes
 
@@ -68,19 +68,23 @@ pins and integrity checks unless the change intentionally updates the contract.
 Never reintroduce mutable, unauthenticated remote installer execution or
 unfrozen dependency resolution. Registry-backed AI CLIs use
 `templates/ai-cli/bun.lock` with lifecycle scripts disabled. The Node browser
-providers use `templates/browser/provider/bun.lock`; CloakBrowser and Webwright
-use tracked `uv.lock` files.
+providers use `templates/browser/provider/bun.lock`; CloakBrowser uses its
+tracked `uv.lock`.
 
 ## Non-Negotiable Browser Boundary
 
 CloakBrowser is mandatory on every profile. A managed launchd or systemd user
 service owns `http://127.0.0.1:9222`. Chrome DevTools MCP, Playwright CLI, and
-Webwright must use the repository-managed wrappers and this fixed endpoint.
+the exact disabled Webwright tombstone are repository-managed. Only Chrome
+DevTools MCP and Playwright CLI are active and may use the fixed endpoint;
+Webwright must exit `78` without starting Python or a browser.
 
 There is no supported `--skip-browser`, `RLDYOUR_SKIP_CLOAKBROWSER`, alternate
 browser executable, alternate endpoint, auto-started stock browser, or stock
-Chromium fallback. Missing or unhealthy browser state must fail closed. Never
-bind the CDP listener beyond loopback.
+Chromium fallback. Playwright `run-code` and `--filename` are also forbidden.
+Missing, unhealthy, or receipt-divergent browser state must fail closed. Never
+bind the CDP listener beyond loopback. Use `scripts/verify-browser-runtime.sh`
+as the exact installed-runtime authority.
 
 Preserve unmanaged browser files and fail instead of adopting or replacing
 them. Runtime browser profiles, traces, caches, tokens, and service state must

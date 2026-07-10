@@ -1,6 +1,6 @@
 # Installation And Target Matrix
 
-This guide describes adapter contract `0.3.5`. Use `scripts/bootstrap.sh` as the
+This guide describes adapter contract `0.3.6`. Use `scripts/bootstrap.sh` as the
 public entry point so platform, profile, GUI, Docker, browser, safety, and
 verification settings are composed consistently.
 
@@ -156,22 +156,29 @@ Browser automation is a required platform layer, not an optional desktop app.
 | Managed CDP service | `http://127.0.0.1:9222` | fixed loopback endpoint |
 | Chrome DevTools MCP | `1.5.0` | wrapper supplies the fixed browser URL |
 | Playwright CLI | `0.1.17` | wrapper supplies the managed CDP config |
-| Webwright | pinned commit below | managed `local_cdp` overlay, no auto-start |
-
-The exact Webwright commit is
-`4a46f282ec37f27d6003cc498a977939d62d9015`.
+| Webwright | retired fail-closed | exact disabled wrapper exits `78` |
 
 CloakBrowser is installed in an isolated environment. launchd on macOS or a
 systemd user service on Ubuntu owns the persistent headless process and its
 managed profile. `cloakbrowser-cdp-health` validates process ownership, command
 line, loopback binding, discovery response, and WebSocket endpoint.
 
-Provider wrappers run that health check before browser actions and reject:
+The only active providers are Chrome DevTools MCP and Playwright CLI. Their
+wrappers run that health check before browser actions and reject:
 
 - alternate CDP or WebSocket endpoints;
 - alternate executables, channels, browser names, or configuration files;
 - provider auto-start of stock Chrome or Chromium;
+- Playwright arbitrary `run-code` or `--filename` execution;
 - embedded or stock-browser fallback.
+
+Every successful apply also publishes a canonical receipt that binds the exact
+runtimes, provider binaries, wrappers, service definition, policy sources, and
+live health proof. Verify the complete installed state with:
+
+```bash
+bash scripts/verify-browser-runtime.sh
+```
 
 A missing or unhealthy endpoint is a hard failure. Keep port `9222` bound to
 `127.0.0.1`; exposing CDP remotely exposes browser pages, cookies, storage, and
@@ -334,9 +341,9 @@ postinstall. Antigravity uses generation-pinned native archives with tracked
 SHA-512 values and a no-auto-update wrapper. RTK `0.43.0` uses a hash-pinned
 native artifact and tamper-evident launcher. Chrome DevTools MCP and Playwright
 CLI install from a separate tracked `bun.lock` with `--frozen-lockfile`.
-CloakBrowser and Webwright dependencies come from tracked universal locks and
-install with `uv sync --frozen`. Digest drift is a hard failure that requires a
-reviewed contract update.
+CloakBrowser dependencies come from a tracked universal lock and install with
+`uv sync --frozen`. Webwright has no installed runtime or dependency tree.
+Digest drift is a hard failure that requires a reviewed contract update.
 
 APT uses `--no-upgrade` for already present baseline packages. Existing uv/Bun
 source tools and a complete healthy Docker CE installation are preserved on

@@ -23,10 +23,40 @@ def write_executable(path: Path, body: str) -> None:
 def runtime_fixture(tmp_path: Path) -> Path:
     fixture = tmp_path / "fixture"
     (fixture / "scripts/lib").mkdir(parents=True)
+    (fixture / "config").mkdir(parents=True)
     shutil.copy2(ROOT / "scripts/lib/common.sh", fixture / "scripts/lib/common.sh")
+    shutil.copy2(ROOT / "scripts/browser_runtime_integrity.py", fixture / "scripts/browser_runtime_integrity.py")
+    shutil.copy2(ROOT / "scripts/verify-browser-runtime.sh", fixture / "scripts/verify-browser-runtime.sh")
+    shutil.copy2(ROOT / "config/rldyour-contract.json", fixture / "config/rldyour-contract.json")
     shutil.copytree(ROOT / "templates/ai-cli", fixture / "templates/ai-cli")
     shutil.copytree(ROOT / "templates/browser", fixture / "templates/browser")
     return fixture
+
+
+def test_browser_provider_apply_preserves_corrupt_runtime_receipt(tmp_path: Path) -> None:
+    fixture = runtime_fixture(tmp_path)
+    home = tmp_path / "home"
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    write_executable(fake_bin / "bun", "#!/usr/bin/env bash\nexit 0\n")
+    write_executable(fake_bin / "node", "#!/usr/bin/env bash\nprintf '%s\\n' '24.18.0'\n")
+    browser_home = home / ".local/share/rldyour/browser-stack"
+    browser_home.mkdir(parents=True)
+    (browser_home / ".rldyour-browser-stack").write_text(
+        "# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1\n",
+        encoding="utf-8",
+    )
+    receipt = browser_home / "browser-runtime-receipt.json"
+    receipt.write_text('{"owner":"unmanaged"}\n', encoding="utf-8")
+    receipt.chmod(0o600)
+    before = receipt.read_bytes()
+
+    result = run_bash(fixture, home, fake_bin, "rldyour::install_browser_providers")
+
+    assert result.returncode != 0
+    assert "receipt is unmanaged or corrupt; preserved" in result.stdout
+    assert receipt.read_bytes() == before
+    assert not (home / ".local/bin/chrome-devtools-mcp").exists()
 
 
 def run_bash(
@@ -164,68 +194,6 @@ def install_fake_uv(fake_bin: Path) -> None:
         exec "${REAL_PYTHON:?}" "$@"
         PYTHON
         chmod 0755 "$venv/bin/python"
-        """,
-    )
-
-
-def install_fake_git(fake_bin: Path) -> None:
-    write_executable(
-        fake_bin / "git",
-        r"""
-        #!/usr/bin/env bash
-        set -euo pipefail
-        printf '<%s>' "$@" >>"${FAKE_GIT_LOG:?}"
-        printf '\n' >>"$FAKE_GIT_LOG"
-        if [ "${1:-}" = clone ]; then
-          [ "${FAKE_GIT_FAIL:-0}" -eq 0 ] || exit 73
-          previous=""
-          current=""
-          for argument in "$@"; do
-            previous=$current
-            current=$argument
-          done
-          repo=$previous
-          checkout=$current
-          mkdir -p "$checkout/.git" "$checkout/src/webwright/environments" "$checkout/src/webwright/config" "$checkout/src/webwright/run"
-          printf '%s\n' "$repo" >"$checkout/.git/origin"
-          : >"$checkout/src/webwright/__init__.py"
-          : >"$checkout/src/webwright/run/__init__.py"
-          : >"$checkout/src/webwright/run/cli.py"
-          printf '%s\n' 'local_cdp_auto_start = False' >"$checkout/src/webwright/environments/local_browser.py"
-          for config in base.yaml local_browser.yaml model_openai.yaml; do
-            printf '%s\n' 'managed: true' >"$checkout/src/webwright/config/$config"
-          done
-          exit 0
-        fi
-        [ "${1:-}" = -C ] || exit 64
-        checkout=$2
-        shift 2
-        command_name=$1
-        shift
-        case "$command_name" in
-          remote)
-            cat "$checkout/.git/origin"
-            ;;
-          fetch)
-            [ "${FAKE_GIT_FAIL:-0}" -eq 0 ] || exit 73
-            ;;
-          checkout)
-            pin=""
-            for argument in "$@"; do pin=$argument; done
-            printf '%s\n' "$pin" >"$checkout/.git/head"
-            ;;
-          rev-parse)
-            cat "$checkout/.git/head"
-            ;;
-          symbolic-ref)
-            exit 1
-            ;;
-          status)
-            ;;
-          *)
-            exit 64
-            ;;
-        esac
         """,
     )
 
@@ -1028,68 +996,6 @@ def test_cloak_health_accepts_restored_prior_binary_with_managed_provenance(tmp_
     assert health.returncode == 0, health.stdout + health.stderr
 
 
-def test_webwright_git_failure_and_import_poison_preserve_previous_runtime(tmp_path: Path) -> None:
-    fixture = runtime_fixture(tmp_path)
-    home = tmp_path / "home"
-    fake_bin = tmp_path / "fake-bin"
-    fake_bin.mkdir()
-    install_fake_git(fake_bin)
-    install_fake_uv(fake_bin)
-    git_log = tmp_path / "git.log"
-    uv_log = tmp_path / "uv.log"
-    python_log = tmp_path / "python.log"
-    pin = "4a46f282ec37f27d6003cc498a977939d62d9015"
-    env = {
-        "FAKE_GIT_LOG": str(git_log),
-        "FAKE_UV_LOG": str(uv_log),
-        "FAKE_PYTHON_LOG": str(python_log),
-        "PYTHONPATH": "poisoned-pythonpath",
-        "PYTHONHOME": "poisoned-pythonhome",
-    }
-    command = f'''
-      rldyour::_install_webwright https://example.invalid/Webwright.git {pin} \
-        "$HOME/webwright" "$FIXTURE/templates/browser/webwright-uv.lock" runtime_result || exit
-      printf '%s\\n' "$runtime_result"
-    '''
-
-    first = run_bash(fixture, home, fake_bin, command, extra_env=env)
-    assert first.returncode == 0, first.stdout + first.stderr
-    published = Path(first.stdout.strip().splitlines()[-1])
-    assert published.is_dir()
-    assert "PYTHONPATH=unset PYTHONHOME=unset" in uv_log.read_text(encoding="utf-8")
-    python_probes = python_log.read_text(encoding="utf-8")
-    assert "PYTHONPATH=unset PYTHONHOME=unset" in python_probes
-    assert "<-I>" in python_probes
-
-    second = run_bash(
-        fixture,
-        home,
-        fake_bin,
-        command,
-        extra_env={**env, "FAKE_GIT_FAIL": "1", "FAKE_UV_FAIL": "1"},
-    )
-    assert second.returncode == 0, second.stdout + second.stderr
-    assert len(uv_log.read_text(encoding="utf-8").splitlines()) == 1
-
-    wrapper = home / ".local/bin/webwright"
-    wrapper.parent.mkdir(parents=True)
-    wrapper.write_text("# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1\nold\n", encoding="utf-8")
-    before_wrapper = wrapper.read_bytes()
-    lock = fixture / "templates/browser/webwright-uv.lock"
-    lock.write_text(lock.read_text(encoding="utf-8") + "\n# fault-injection\n", encoding="utf-8")
-    failed_upgrade = run_bash(
-        fixture,
-        home,
-        fake_bin,
-        command,
-        extra_env={**env, "FAKE_GIT_FAIL": "1"},
-    )
-    assert failed_upgrade.returncode != 0
-    assert published.is_dir()
-    assert wrapper.read_bytes() == before_wrapper
-    assert not list((home / "webwright/runtimes").glob(".*.staging.*"))
-
-
 def test_browser_wrappers_reject_privacy_bypasses_and_ignore_global_remote(tmp_path: Path) -> None:
     fixture = runtime_fixture(tmp_path)
     home = tmp_path / "home"
@@ -1135,41 +1041,36 @@ def test_browser_wrappers_reject_privacy_bypasses_and_ignore_global_remote(tmp_p
         printf '\n' >>"$WRAPPER_PROVIDER_LOG"
         """,
     )
-    fake_webwright = tmp_path / "fake-webwright"
-    (fake_webwright / ".venv/bin").mkdir(parents=True)
-    write_executable(fake_webwright / ".venv/bin/python", "#!/usr/bin/env bash\nexit 0\n")
     malicious = home / ".playwright/cli.config.json"
     malicious.parent.mkdir(parents=True)
     malicious.write_text('{"browser":{"remoteEndpoint":"http://attacker.invalid"}}\n', encoding="utf-8")
     env = {
         "FAKE_CHROME_PROVIDER": str(chrome_provider),
         "FAKE_PLAYWRIGHT_PROVIDER": str(playwright_provider),
-        "FAKE_WEBWRIGHT": str(fake_webwright),
         "WRAPPER_PROVIDER_LOG": str(provider_log),
     }
     install = r'''
       rldyour::_install_browser_node_bundle() {
         printf -v "$6" '%s' "$FAKE_CHROME_PROVIDER"
         printf -v "$7" '%s' "$FAKE_PLAYWRIGHT_PROVIDER"
+        [ "$#" -lt 8 ] || printf -v "$8" '%s' "$HOME/fake-node-runtime"
       }
       rldyour::install_cloakbrowser() {
         mkdir -p "$HOME/.local/bin"
         printf '#!/usr/bin/env bash\nexit 0\n' >"$HOME/.local/bin/cloakbrowser-cdp-health"
         printf '#!/usr/bin/env bash\nexit 0\n' >"$HOME/.local/bin/cloak-chromium"
         chmod 0755 "$HOME/.local/bin/cloakbrowser-cdp-health" "$HOME/.local/bin/cloak-chromium"
+        [ "$#" -lt 1 ] || printf -v "$1" '%s' "$HOME/fake-cloak-runtime"
+        [ "$#" -lt 2 ] || printf -v "$2" '%s' "$HOME/fake-cloak-binary"
       }
       rldyour::install_cloakbrowser_daemon() { :; }
-      rldyour::_install_webwright() {
-        [ "${FAKE_WEBWRIGHT_FAIL:-0}" -eq 0 ] || return 73
-        printf -v "$5" '%s' "$FAKE_WEBWRIGHT"
-      }
+      rldyour::_publish_browser_runtime_receipt() { :; }
       rldyour::install_browser_providers
     '''
     installed = run_bash(fixture, home, fake_bin, install, extra_env=env)
     assert installed.returncode == 0, installed.stdout + installed.stderr
 
     wrappers = home / ".local/bin"
-    before = {name: (wrappers / name).read_bytes() for name in ("chrome-devtools-mcp", "playwright-cli", "webwright")}
     rejected = subprocess.run(
         [str(wrappers / "chrome-devtools-mcp"), "--performanceCrux"],
         capture_output=True,
@@ -1227,31 +1128,41 @@ def test_browser_wrappers_reject_privacy_bypasses_and_ignore_global_remote(tmp_p
     old_config_bytes = old_config.read_bytes()
     managed_config = json.loads(old_config.read_text(encoding="utf-8"))
     assert managed_config["browser"]["remoteEndpoint"] is None
-
-    overlay_template = fixture / "templates/browser/webwright-local-cdp.yaml"
-    overlay_template.write_text(
-        overlay_template.read_text(encoding="utf-8") + "\n# transactional-upgrade-candidate\n",
-        encoding="utf-8",
-    )
-    failed_switch = run_bash(
-        fixture,
-        home,
-        fake_bin,
-        install,
-        extra_env={**env, "FAKE_WEBWRIGHT_FAIL": "1"},
-    )
-    assert failed_switch.returncode != 0
-    assert before == {name: (wrappers / name).read_bytes() for name in before}
-    assert str(old_config) in (wrappers / "playwright-cli").read_text(encoding="utf-8")
     assert old_config.read_bytes() == old_config_bytes
-    assert len(list(config_runtimes.glob("config-*/playwright-cli.json"))) == 2
+
+    provider_lines = provider_log.read_text(encoding="utf-8").splitlines()
+    for forbidden_args in (("run-code",), ("--filename", "payload.py"), ("--filename=payload.py",)):
+        rejected_code = subprocess.run(
+            [str(wrappers / "playwright-cli"), *forbidden_args],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, "HOME": str(home), "WRAPPER_PROVIDER_LOG": str(provider_log)},
+        )
+        assert rejected_code.returncode == 64
+        assert "arbitrary code and file execution are disabled" in rejected_code.stderr
+        assert provider_log.read_text(encoding="utf-8").splitlines() == provider_lines
+
+    retired = subprocess.run(
+        [str(wrappers / "webwright"), "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "WRAPPER_PROVIDER_LOG": str(provider_log)},
+    )
+    assert retired.returncode == 78
+    assert "NOT_PROVEN" in retired.stderr
+    assert provider_log.read_text(encoding="utf-8").splitlines() == provider_lines
 
 
-def test_webwright_wrapper_replaces_inherited_pythonpath() -> None:
+def test_retired_webwright_has_no_runtime_or_python_execution_path() -> None:
     common = (ROOT / "scripts/lib/common.sh").read_text(encoding="utf-8")
-    assert 'unset LOCAL_BROWSER_EXECUTABLE BROWSER_EXECUTABLE PYTHONHOME' in common
-    assert 'export PYTHONPATH="${webwright_home}/src"' in common
-    assert '${PYTHONPATH:+' not in common
+    assert "rldyour::_install_webwright" not in common
+    assert "microsoft/Webwright" not in common
+    assert "webwright-uv.lock" not in common
+    assert "webwright.run.cli" not in common
+    assert "exit 78" in common
+    assert "NOT_PROVEN" in common
     assert "--performanceCrux|--performanceCrux=*" in common
     assert "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1" in common
     assert 'export PWTEST_CLI_GLOBAL_CONFIG="\\$global_config_root"' in common

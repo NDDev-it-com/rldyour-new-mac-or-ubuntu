@@ -4,6 +4,29 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-07-10
+
+### Changed
+
+- Retire Webwright fail-closed and remove its checkout, Python environment,
+  dependency lock, and CDP overlay. The compatibility command is now an exact
+  tombstone wrapper that exits `78` without starting Python or a browser.
+- Define Playwright CLI and Chrome DevTools MCP as the only active providers,
+  both routed through the fixed managed CloakBrowser endpoint.
+
+### Security
+
+- Reject Playwright CLI `run-code` and `--filename` escape paths that could
+  execute arbitrary code outside the managed CDP configuration.
+- Publish an owner-only canonical browser runtime receipt that binds exact
+  content-addressed runtimes, provider binaries, wrappers, service definition,
+  source policies, and rigorous live health; add a standalone full verifier.
+
+### Fixed
+
+- Make macOS and Ubuntu strict verification consume the full browser runtime
+  integrity verifier instead of accepting command presence or marker matches.
+
 ## [0.3.5] - 2026-07-10
 
 ### Fixed

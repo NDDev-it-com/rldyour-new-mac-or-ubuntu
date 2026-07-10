@@ -896,185 +896,15 @@ raise SystemExit(0 if pathlib.Path(sys.argv[1]).read_bytes() == expected else 1)
 PY
 }
 
-# Webwright is a pinned GitHub checkout provider. It intentionally does
-# not install Playwright's stock Chromium: the managed wrapper composes the
-# local_cdp overlay last and refuses to auto-start any fallback browser.
-rldyour::_install_webwright() {
-  local repo=$1
-  local pin=$2
-  local home=$3
-  local lock_source=$4
-  local output_var=${5:-}
-  local marker="$home/.rldyour-webwright-runtime"
-  local legacy="$home/Microsoft-Webwright"
-  local runtimes="$home/runtimes"
-  local runtime_label content_id runtime_name destination runtime_marker stage=""
-  local checkout_lock origin head required_config legacy_valid=0
-
-  if [ ! -f "$lock_source" ] || [ -L "$lock_source" ]; then
-    rldyour::log "error" "managed Webwright uv.lock is missing or unsafe: ${lock_source}"
-    return 1
-  fi
-  if [ -L "$home" ] || { [ -e "$home" ] && [ ! -d "$home" ]; }; then
-    rldyour::log "error" "Webwright namespace is not a managed directory; preserved: ${home}"
-    return 1
-  fi
-  if [ -e "$marker" ] && { [ ! -f "$marker" ] || [ -L "$marker" ] || \
-    ! grep -Fxq "# Managed by rldyour-new-mac-or-ubuntu: webwright-runtime-v1" "$marker"; }; then
-    rldyour::log "error" "Webwright ownership marker is invalid; preserved: ${marker}"
-    return 1
-  fi
-  if [ -L "$runtimes" ] || { [ -e "$runtimes" ] && [ ! -d "$runtimes" ]; }; then
-    rldyour::log "error" "Webwright runtimes path is not a managed directory; preserved: ${runtimes}"
-    return 1
-  fi
-  if [ -d "$home" ] && [ ! -f "$marker" ] && \
-    [ -n "$(find "$home" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
-    # Adopt only the exact checkout shape emitted by the previous bootstrap.
-    # Any additional or divergent state remains unmanaged and fails closed.
-    if [ "$(find "$home" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d '[:space:]')" = 1 ] && \
-      [ -d "$legacy/.git" ] && \
-      [ "$(git -C "$legacy" remote get-url origin 2>/dev/null || true)" = "$repo" ] && \
-      [ "$(git -C "$legacy" rev-parse HEAD 2>/dev/null || true)" = "$pin" ] && \
-      ! git -C "$legacy" symbolic-ref -q HEAD >/dev/null 2>&1 && \
-      [ -z "$(git -C "$legacy" status --porcelain --untracked-files=normal)" ] && \
-      [ -x "$legacy/.venv/bin/python" ] && \
-      rldyour::_isolated_python "$legacy/.venv/bin/python" - "$legacy/src" <<'PY' >/dev/null 2>&1
-import sys
-sys.path.insert(0, sys.argv[1])
-import webwright.run.cli
-PY
-    then
-      legacy_valid=1
-    fi
-    if [ "$legacy_valid" -ne 1 ]; then
-      rldyour::log "error" "Webwright home exists without exact managed legacy identity; preserved: ${home}"
-      return 1
-    fi
-    rldyour::log "info" "adopting exact legacy Webwright checkout without modifying it: ${legacy}"
-  fi
-
-  mkdir -p "$home" "$runtimes" || return 1
-  chmod 0700 "$home" "$runtimes" || return 1
-  rldyour::_install_managed_browser_file \
-    "$marker" "# Managed by rldyour-new-mac-or-ubuntu: webwright-runtime-v1" 0600 <<'MARKER' || return 1
-# Managed by rldyour-new-mac-or-ubuntu: webwright-runtime-v1
-# Versioned Git checkout and frozen Python environment; configuration lives elsewhere.
-MARKER
-
-  runtime_label="webwright|commit=${pin}|repo=${repo}"
-  content_id="$(rldyour::_runtime_content_id "$runtime_label" "$lock_source")" || return 1
-  runtime_name="webwright-${pin}-${content_id}"
-  destination="$runtimes/$runtime_name"
-  runtime_marker="$destination/.git/rldyour-runtime"
-  checkout_lock="$destination/uv.lock"
-  if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -d "$destination" ]; }; then
-    rldyour::log "error" "Webwright runtime destination is invalid; preserved: ${destination}"
-    return 1
-  fi
-  trap 'if [ -n "${stage:-}" ]; then rm -rf "$stage"; fi; trap - RETURN' RETURN
-  if [ ! -d "$destination" ]; then
-    stage="$(mktemp -d "$runtimes/.${runtime_name}.staging.XXXXXX")" || return 1
-    rmdir "$stage" || return 1
-    git clone --no-checkout "$repo" "$stage" || return 1
-    origin="$(git -C "$stage" remote get-url origin 2>/dev/null || true)"
-    if [ "$origin" != "$repo" ]; then
-      rldyour::log "error" "staged Webwright checkout has an unexpected origin"
-      return 1
-    fi
-    git -C "$stage" fetch --no-tags origin "$pin" || return 1
-    git -C "$stage" checkout --detach "$pin" || return 1
-    head="$(git -C "$stage" rev-parse HEAD 2>/dev/null || true)"
-    if [ "$head" != "$pin" ] || git -C "$stage" symbolic-ref -q HEAD >/dev/null 2>&1; then
-      rldyour::log "error" "staged Webwright checkout did not resolve to the required detached commit"
-      return 1
-    fi
-    if [ -n "$(git -C "$stage" status --porcelain --untracked-files=normal)" ]; then
-      rldyour::log "error" "staged Webwright checkout is not clean before dependency installation"
-      return 1
-    fi
-    if ! grep -Fq "local_cdp_auto_start" "$stage/src/webwright/environments/local_browser.py"; then
-      rldyour::log "error" "pinned Webwright checkout lacks the required fail-closed local CDP contract"
-      return 1
-    fi
-    for required_config in base.yaml local_browser.yaml model_openai.yaml; do
-      if [ ! -f "$stage/src/webwright/config/$required_config" ] || \
-        [ -L "$stage/src/webwright/config/$required_config" ]; then
-        rldyour::log "error" "pinned Webwright checkout lacks safe required config: ${required_config}"
-        return 1
-      fi
-    done
-
-    cp "$lock_source" "$stage/uv.lock" || return 1
-    if ! env -u PYTHONPATH -u PYTHONHOME UV_PROJECT_ENVIRONMENT="$stage/.venv" uv sync \
-      --frozen --no-dev --no-install-project --project "$stage" >/dev/null 2>&1; then
-      rldyour::log "error" "frozen Webwright staged dependency installation failed"
-      return 1
-    fi
-    rm -f "$stage/uv.lock" || return 1
-    if [ -n "$(git -C "$stage" status --porcelain --untracked-files=normal)" ]; then
-      rldyour::log "error" "Webwright staged install left the source checkout dirty"
-      return 1
-    fi
-    if ! rldyour::_isolated_python "$stage/.venv/bin/python" - "$stage/src" <<'PY' >/dev/null 2>&1
-import sys
-sys.path.insert(0, sys.argv[1])
-import webwright.run.cli
-PY
-    then
-      rldyour::log "error" "Webwright staged isolated import probe failed"
-      return 1
-    fi
-    cat >"$stage/.git/rldyour-runtime" <<RUNTIME
-# Managed by rldyour-new-mac-or-ubuntu: webwright-runtime-v2
-identity=${content_id}
-commit=${pin}
-RUNTIME
-    chmod 0600 "$stage/.git/rldyour-runtime" || return 1
-    mv "$stage" "$destination" || return 1
-    stage=""
-  fi
-
-  origin="$(git -C "$destination" remote get-url origin 2>/dev/null || true)"
-  head="$(git -C "$destination" rev-parse HEAD 2>/dev/null || true)"
-  if [ "$origin" != "$repo" ] || [ "$head" != "$pin" ] || \
-    git -C "$destination" symbolic-ref -q HEAD >/dev/null 2>&1 || \
-    [ -n "$(git -C "$destination" status --porcelain --untracked-files=normal)" ] || \
-    [ ! -f "$runtime_marker" ] || [ -L "$runtime_marker" ] || \
-    ! grep -Fxq "# Managed by rldyour-new-mac-or-ubuntu: webwright-runtime-v2" "$runtime_marker" || \
-    ! grep -Fxq "identity=${content_id}" "$runtime_marker" || \
-    [ -e "$checkout_lock" ] || [ -L "$checkout_lock" ]; then
-    rldyour::log "error" "published Webwright runtime identity is invalid; preserved: ${destination}"
-    return 1
-  fi
-  for required_config in base.yaml local_browser.yaml model_openai.yaml; do
-    if [ ! -f "$destination/src/webwright/config/$required_config" ] || \
-      [ -L "$destination/src/webwright/config/$required_config" ]; then
-      rldyour::log "error" "published Webwright runtime lacks safe config: ${required_config}"
-      return 1
-    fi
-  done
-  if [ ! -x "$destination/.venv/bin/python" ] || \
-    ! rldyour::_isolated_python "$destination/.venv/bin/python" - "$destination/src" <<'PY' >/dev/null 2>&1
-import sys
-sys.path.insert(0, sys.argv[1])
-import webwright.run.cli
-PY
-  then
-    rldyour::log "error" "published Webwright isolated import probe failed"
-    return 1
-  fi
-  if [ -n "$output_var" ]; then
-    printf -v "$output_var" '%s' "$destination"
-  fi
-  trap - RETURN
-}
+# Webwright is retired fail-closed. The browser layer publishes only an exact
+# disabled compatibility wrapper; no checkout, Python environment, or browser
+# object from Webwright is installed or executed.
 
 # --- CloakBrowser privacy-first Chromium (owner standard) ---------------------
 # CloakBrowser is a stealth-hardened Chromium (source-level fingerprint patches)
-# used as the DEFAULT browser backend for every rldyour browser provider so that
-# terminal browser automation (Webwright / Playwright CLI / Chrome DevTools MCP)
-# runs through one privacy-hardened, low-trace engine. The free-tier binary
+# used as the DEFAULT browser backend for every active rldyour browser provider
+# (Playwright CLI and Chrome DevTools MCP) through one privacy-hardened,
+# low-trace engine. The free-tier binary
 # (Chromium v146 line) is signature-verified (Ed25519) by the wrapper before use;
 # An owner-supplied CLOAKBROWSER_LICENSE_KEY may unlock licensed behavior, but it
 # never changes the platform-specific browser build pinned by this repository.
@@ -1176,6 +1006,8 @@ RUNTIME
 #   cloak-chromium-stealth  -> cloak-chromium + default stealth args (manual runs)
 rldyour::install_cloakbrowser() {
   local dry_run="${RLDYOUR_DRY_RUN:-1}"
+  local runtime_output_var=${1:-}
+  local binary_output_var=${2:-}
   local pin="0.4.10"
   local bin_dir="$HOME/.local/bin"
   local home cache marker_file receipt resolved_binary fp legacy_owned
@@ -1570,6 +1402,12 @@ HEALTH
   export PLAYWRIGHT_MCP_CDP_ENDPOINT="$RLDYOUR_BROWSER_CDP_ENDPOINT"
   export LOCAL_BROWSER_CDP_URL="$RLDYOUR_BROWSER_CDP_ENDPOINT"
   export BROWSER_CDP_URL="$RLDYOUR_BROWSER_CDP_ENDPOINT"
+  if [ -n "$runtime_output_var" ]; then
+    printf -v "$runtime_output_var" '%s' "$runtime_home"
+  fi
+  if [ -n "$binary_output_var" ]; then
+    printf -v "$binary_output_var" '%s' "$resolved_binary"
+  fi
   rldyour::log "ok" "CloakBrowser ${pin} installed with fail-closed launchers under ${bin_dir}"
 }
 
@@ -2513,19 +2351,18 @@ RTKCFG
 rldyour::_install_browser_config_bundle() {
   local browser_home=$1 template_dir=$2 output_var=$3
   local playwright_source="$template_dir/playwright-cli.json"
-  local webwright_source="$template_dir/webwright-local-cdp.yaml"
   local runtimes="$browser_home/config-runtimes"
   local content_id destination runtime_marker stage=""
 
   content_id="$(rldyour::_runtime_content_id \
-    "browser-config|schema=2" "$playwright_source" "$webwright_source")" || return 1
+    "browser-config|schema=3" "$playwright_source")" || return 1
   destination="$runtimes/config-${content_id}"
   runtime_marker="$destination/.rldyour-runtime"
   if [ -L "$runtimes" ] || { [ -e "$runtimes" ] && [ ! -d "$runtimes" ]; }; then
     rldyour::log "error" "browser config runtimes path is not a managed directory; preserved: ${runtimes}"
     return 1
   fi
-  if ! rldyour::_isolated_python python3 - "$playwright_source" "$webwright_source" <<'PY'
+  if ! rldyour::_isolated_python python3 - "$playwright_source" <<'PY'
 import json
 import pathlib
 import sys
@@ -2542,23 +2379,6 @@ expected_playwright = {
 }
 if playwright != expected_playwright:
     raise SystemExit("managed Playwright config escaped the fixed CDP contract")
-
-lines = []
-for raw in pathlib.Path(sys.argv[2]).read_text(encoding="utf-8").splitlines():
-    stripped = raw.strip()
-    if stripped and not stripped.startswith("#"):
-        lines.append(stripped)
-expected_webwright = [
-    "environment:",
-    "environment_class: local_browser",
-    "browser_mode: local_cdp",
-    "local_cdp_url: http://127.0.0.1:9222",
-    "local_cdp_auto_start: false",
-    "local_cdp_new_page: true",
-    "local_cdp_close_started_browser_on_exit: false",
-]
-if lines != expected_webwright:
-    raise SystemExit("managed Webwright overlay escaped the fixed CDP contract")
 PY
   then
     rldyour::log "error" "browser routing templates failed their exact fail-closed contract"
@@ -2576,9 +2396,8 @@ PY
     stage="$(mktemp -d "$runtimes/.config-${content_id}.staging.XXXXXX")" || return 1
     chmod 0700 "$stage" || return 1
     install -m 0600 "$playwright_source" "$stage/playwright-cli.json" || return 1
-    install -m 0600 "$webwright_source" "$stage/webwright-local-cdp.yaml" || return 1
     cat >"$stage/.rldyour-runtime" <<RUNTIME
-# Managed by rldyour-new-mac-or-ubuntu: browser-config-runtime-v2
+# Managed by rldyour-new-mac-or-ubuntu: browser-config-runtime-v3
 identity=${content_id}
 RUNTIME
     chmod 0600 "$stage/.rldyour-runtime" || return 1
@@ -2586,10 +2405,9 @@ RUNTIME
     stage=""
   fi
   if [ ! -f "$runtime_marker" ] || [ -L "$runtime_marker" ] || \
-    ! grep -Fxq "# Managed by rldyour-new-mac-or-ubuntu: browser-config-runtime-v2" "$runtime_marker" || \
+    ! grep -Fxq "# Managed by rldyour-new-mac-or-ubuntu: browser-config-runtime-v3" "$runtime_marker" || \
     ! grep -Fxq "identity=${content_id}" "$runtime_marker" || \
-    ! cmp -s "$playwright_source" "$destination/playwright-cli.json" || \
-    ! cmp -s "$webwright_source" "$destination/webwright-local-cdp.yaml"; then
+    ! cmp -s "$playwright_source" "$destination/playwright-cli.json"; then
     rldyour::log "error" "content-addressed browser config runtime identity is invalid; preserved: ${destination}"
     return 1
   fi
@@ -2600,6 +2418,7 @@ RUNTIME
 rldyour::_install_browser_node_bundle() {
   local chrome_version=$1 playwright_version=$2 browser_home=$3
   local manifest_source=$4 lock_source=$5 chrome_output_var=$6 playwright_output_var=$7
+  local runtime_output_var=${8:-}
   local runtimes="$browser_home/node-runtimes"
   local runtime_label content_id runtime_name destination runtime_marker stage=""
   local chrome_path playwright_path actual_chrome actual_playwright
@@ -2685,6 +2504,71 @@ RUNTIME
   fi
   printf -v "$chrome_output_var" '%s' "$chrome_path"
   printf -v "$playwright_output_var" '%s' "$playwright_path"
+  if [ -n "$runtime_output_var" ]; then
+    printf -v "$runtime_output_var" '%s' "$destination"
+  fi
+  trap - RETURN
+}
+
+# Publish one canonical receipt only after every browser runtime, wrapper, and
+# service invariant has been proven against the repository policy. An existing
+# receipt must first prove its ownership and self-integrity; divergent local
+# state is preserved and the installer fails closed.
+rldyour::_publish_browser_runtime_receipt() {
+  local browser_home=$1 cloak_runtime=$2 cloak_binary=$3 node_runtime=$4 config_runtime=$5
+  local common_dir root_dir integrity_script verify_script receipt stage_dir="" stage_receipt policy_file
+  common_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  root_dir="$(cd "$common_dir/../.." && pwd)"
+  integrity_script="$root_dir/scripts/browser_runtime_integrity.py"
+  verify_script="$root_dir/scripts/verify-browser-runtime.sh"
+  receipt="$browser_home/browser-runtime-receipt.json"
+
+  for policy_file in "$integrity_script" "$verify_script"; do
+    if [ ! -f "$policy_file" ] || [ -L "$policy_file" ]; then
+      rldyour::log "error" "browser runtime integrity policy is missing or unsafe: ${policy_file}"
+      return 1
+    fi
+  done
+  if { [ -e "$receipt" ] || [ -L "$receipt" ]; } && \
+    { [ ! -f "$receipt" ] || [ -L "$receipt" ] || \
+      ! env -u PYTHONPATH -u PYTHONHOME python3 -I "$integrity_script" \
+        metadata-only --receipt "$receipt" >/dev/null; }; then
+    rldyour::log "error" "browser runtime receipt is unmanaged or corrupt; preserved: ${receipt}"
+    return 1
+  fi
+
+  stage_dir="$(mktemp -d "$browser_home/.browser-runtime-receipt.XXXXXX")" || return 1
+  chmod 0700 "$stage_dir" || { rm -rf "$stage_dir"; return 1; }
+  stage_receipt="$stage_dir/receipt.json"
+  trap 'if [ -n "${stage_dir:-}" ]; then rm -rf "$stage_dir"; fi; trap - RETURN' RETURN
+  if ! env -u PYTHONPATH -u PYTHONHOME python3 -I "$integrity_script" build \
+    --output "$stage_receipt" \
+    --cloak-runtime "$cloak_runtime" \
+    --cloak-binary "$cloak_binary" \
+    --node-runtime "$node_runtime" \
+    --config-runtime "$config_runtime" >/dev/null; then
+    rldyour::log "error" "installed browser runtime did not satisfy the exact integrity contract"
+    return 1
+  fi
+  if ! env -u PYTHONPATH -u PYTHONHOME python3 -I "$integrity_script" \
+    metadata-only --receipt "$stage_receipt" >/dev/null; then
+    rldyour::log "error" "staged browser runtime receipt failed canonical integrity verification"
+    return 1
+  fi
+  if [ -e "$receipt" ] && \
+    ! env -u PYTHONPATH -u PYTHONHOME python3 -I "$integrity_script" \
+      metadata-only --receipt "$receipt" >/dev/null; then
+    rldyour::log "error" "browser runtime receipt changed during publication; preserved"
+    return 1
+  fi
+  mv -f "$stage_receipt" "$receipt" || return 1
+  rmdir "$stage_dir" || return 1
+  stage_dir=""
+  if ! "$verify_script" --receipt "$receipt" --json >/dev/null; then
+    rldyour::log "error" "published browser runtime receipt failed full live verification"
+    return 1
+  fi
+  rldyour::log "ok" "browser runtime integrity receipt published and proven: ${receipt}"
   trap - RETURN
 }
 
@@ -2696,14 +2580,11 @@ rldyour::install_browser_providers() {
   local dry_run="${RLDYOUR_DRY_RUN:-1}"
   local chrome_version="1.5.0"
   local playwright_version="0.1.17"
-  local webwright_pin="4a46f282ec37f27d6003cc498a977939d62d9015"
-  local webwright_repo="https://github.com/microsoft/Webwright.git"
-  local webwright_namespace="$HOME/.local/share/rldyour/webwright"
-  local webwright_home=""
   local endpoint="http://127.0.0.1:9222"
   local bin_dir="$HOME/.local/bin"
   local browser_home="$HOME/.local/share/rldyour/browser-stack"
-  local config_home="" session_home marker_file playwright_global_root
+  local config_home="" cloak_runtime="" cloak_binary="" node_runtime=""
+  local session_home marker_file playwright_global_root receipt integrity_script
   local common_dir root_dir template_dir
   local provider_manifest provider_lock provider_source
   local chrome_bin playwright_bin node_version
@@ -2717,6 +2598,8 @@ rldyour::install_browser_providers() {
   template_dir="$root_dir/templates/browser"
   provider_manifest="$template_dir/provider/package.json"
   provider_lock="$template_dir/provider/bun.lock"
+  receipt="$browser_home/browser-runtime-receipt.json"
+  integrity_script="$root_dir/scripts/browser_runtime_integrity.py"
 
   rldyour::section "Install browser providers (pinned)"
   rldyour::_reject_cloak_trust_overrides || return 1
@@ -2733,22 +2616,29 @@ rldyour::install_browser_providers() {
   export AGENT_BROWSER_EXECUTABLE_PATH="$bin_dir/cloak-chromium"
 
   if [ "$dry_run" -eq 1 ]; then
-    rldyour::log "info" "[DRY-RUN] require apply-time commands: bun, uv, compatible node, python3, git, curl"
+    rldyour::log "info" "[DRY-RUN] require apply-time commands: bun, uv, compatible node, python3, curl"
     rldyour::install_cloakbrowser || return 1
     rldyour::install_cloakbrowser_daemon || return 1
     rldyour::log "info" "[DRY-RUN] bun install --frozen-lockfile --ignore-scripts from the repository-owned provider lock"
-    rldyour::log "info" "[DRY-RUN] stage content-addressed fixed-CDP config overlays from ${template_dir} under ${browser_home}/config-runtimes"
-    rldyour::log "info" "[DRY-RUN] install provider wrappers under ${bin_dir}; alternate browser endpoints are rejected"
-    rldyour::log "info" "[DRY-RUN] Webwright pinned checkout ${webwright_pin} -> versioned runtime under ${webwright_namespace}; stock Chromium download disabled"
+    rldyour::log "info" "[DRY-RUN] stage the content-addressed fixed-CDP Playwright config under ${browser_home}/config-runtimes"
+    rldyour::log "info" "[DRY-RUN] install two active provider wrappers plus the exact disabled Webwright tombstone under ${bin_dir}"
+    rldyour::log "info" "[DRY-RUN] publish and live-verify the canonical browser runtime integrity receipt"
     return 0
   fi
 
-  for command_name in bun node git python3; do
+  for command_name in bun node python3; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
       rldyour::log "error" "${command_name} is required for the mandatory browser provider layer"
       return 1
     fi
   done
+  if { [ -e "$receipt" ] || [ -L "$receipt" ]; } && \
+    { [ ! -f "$receipt" ] || [ -L "$receipt" ] || \
+      ! env -u PYTHONPATH -u PYTHONHOME python3 -I "$integrity_script" \
+        metadata-only --receipt "$receipt" >/dev/null; }; then
+    rldyour::log "error" "browser runtime receipt is unmanaged or corrupt; preserved: ${receipt}"
+    return 1
+  fi
   node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
   if ! rldyour::_isolated_python python3 - "$node_version" <<'PY'
 import sys
@@ -2792,7 +2682,7 @@ PY
       return 1
     fi
   done
-  for template in playwright-cli.json webwright-local-cdp.yaml webwright-uv.lock cloakbrowser-pyproject.toml cloakbrowser-uv.lock; do
+  for template in playwright-cli.json cloakbrowser-pyproject.toml cloakbrowser-uv.lock; do
     if [ ! -f "$template_dir/$template" ] || [ -L "$template_dir/$template" ]; then
       rldyour::log "error" "required browser routing template is missing or unsafe: ${template_dir}/${template}"
       return 1
@@ -2807,17 +2697,8 @@ PY
 MARKER
   rldyour::_install_browser_node_bundle \
     "$chrome_version" "$playwright_version" "$browser_home" \
-    "$provider_manifest" "$provider_lock" chrome_bin playwright_bin || return 1
+    "$provider_manifest" "$provider_lock" chrome_bin playwright_bin node_runtime || return 1
   rldyour::_install_browser_config_bundle "$browser_home" "$template_dir" config_home || return 1
-
-  # Stage and verify every network/dependency-backed provider before changing
-  # the live CloakBrowser service or any provider wrapper.
-  if ! rldyour::_install_webwright \
-    "$webwright_repo" "$webwright_pin" "$webwright_namespace" \
-    "$template_dir/webwright-uv.lock" webwright_home; then
-    rldyour::log "error" "Webwright pinned provider installation failed"
-    return 1
-  fi
 
   wrapper_stage="$(mktemp -d "$bin_dir/.browser-provider-wrappers.XXXXXX")" || return 1
   chmod 0700 "$wrapper_stage" || {
@@ -2905,6 +2786,10 @@ while [ "\$#" -gt 0 ]; do
       echo "playwright-cli: stock-browser installation and external attach commands are disabled" >&2
       exit 64
       ;;
+    run-code|--filename|--filename=*)
+      echo "playwright-cli: arbitrary code and file execution are disabled by the managed browser policy" >&2
+      exit 64
+      ;;
     --config|--config=*|--browser|--browser=*|--extension|--extension=*|--endpoint|--endpoint=*|--remote-endpoint|--remote-endpoint=*|--cdp-endpoint|--cdp-endpoint=*|--executable-path|--executable-path=*|--user-data-dir|--user-data-dir=*|--persistent|--profile|--profile=*|--init-workspace|--init-skills|--init-skills=*)
       echo "playwright-cli: alternate browser configuration rejected" >&2
       exit 64
@@ -2957,28 +2842,12 @@ PLAYWRIGHT
   # a workspace and downloads Playwright's stock Chromium. The isolated CLI and
   # managed config above are sufficient for the CDP-locked PATH entry point.
 
-  if ! cat >"$wrapper_stage/webwright" <<WEBWRIGHT
+  if ! cat >"$wrapper_stage/webwright" <<'WEBWRIGHT'
 #!/usr/bin/env bash
 # Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1
 set -euo pipefail
-endpoint="${endpoint}"
-health="${bin_dir}/cloakbrowser-cdp-health"
-python="${webwright_home}/.venv/bin/python"
-base="${webwright_home}/src/webwright/config/base.yaml"
-browser="${webwright_home}/src/webwright/config/local_browser.yaml"
-model="${webwright_home}/src/webwright/config/model_openai.yaml"
-overlay="${config_home}/webwright-local-cdp.yaml"
-
-for arg in "\$@"; do
-  [ "\$arg" != "--" ] || { echo "webwright: '--' cannot bypass the mandatory final CDP overlay" >&2; exit 64; }
-done
-"\$health"
-unset LOCAL_BROWSER_EXECUTABLE BROWSER_EXECUTABLE PYTHONHOME
-export LOCAL_BROWSER_CDP_URL="\$endpoint"
-export BROWSER_CDP_URL="\$endpoint"
-export AGENT_BROWSER_EXECUTABLE_PATH="${bin_dir}/cloak-chromium"
-export PYTHONPATH="${webwright_home}/src"
-exec "\$python" -m webwright.run.cli -c "\$base" -c "\$browser" -c "\$model" "\$@" -c "\$overlay"
+echo "webwright: retired by the fail-closed browser policy; arbitrary Python/browser objects are NOT_PROVEN" >&2
+exit 78
 WEBWRIGHT
   then
     rm -rf "$wrapper_stage"
@@ -2989,7 +2858,7 @@ WEBWRIGHT
     return 1
   }
 
-  rldyour::install_cloakbrowser || {
+  rldyour::install_cloakbrowser cloak_runtime cloak_binary || {
     rm -rf "$wrapper_stage"
     return 1
   }
@@ -3007,12 +2876,19 @@ WEBWRIGHT
     return 1
   fi
   wrapper_stage=""
+  if ! rldyour::_publish_browser_runtime_receipt \
+    "$browser_home" "$cloak_runtime" "$cloak_binary" "$node_runtime" "$config_home"; then
+    if ! rldyour::rollback_cloak_daemon_handoff; then
+      rldyour::log "error" "browser runtime verification and CloakBrowser daemon rollback both failed"
+    fi
+    return 1
+  fi
   rldyour::commit_cloak_daemon_handoff || {
     rldyour::log "error" "provider wrappers are live but daemon transaction cleanup failed"
     return 1
   }
 
-  rldyour::log "ok" "browser providers installed: chrome-devtools-mcp ${chrome_version}, Playwright CLI ${playwright_version}, Webwright ${webwright_pin}"
+  rldyour::log "ok" "browser providers installed: chrome-devtools-mcp ${chrome_version}, Playwright CLI ${playwright_version}; Webwright retired fail-closed"
 }
 
 # --- Terminal layer ----------------------------------------------------------
@@ -3155,7 +3031,7 @@ rldyour::verify_terminal_environment() {
     printf "__RLDYOUR_CLOAK_BINARY__=%s\n" "${CLOAKBROWSER_BINARY_PATH-unset}"
     printf "__RLDYOUR_CLOAK_URL__=%s\n" "${CLOAKBROWSER_DOWNLOAD_URL-unset}"
     printf "__RLDYOUR_CLOAK_SKIP__=%s\n" "${CLOAKBROWSER_SKIP_CHECKSUM-unset}"
-    for name in claude codex opencode mimo agy rtk cloak-chromium cloakbrowser-cdp-health chrome-devtools-mcp playwright-cli webwright; do
+    for name in claude codex opencode mimo agy rtk cloak-chromium cloakbrowser-cdp-health chrome-devtools-mcp playwright-cli; do
       resolved="$(command -v "$name")" || exit 1
       printf "__RLDYOUR_CMD_%s__=%s\n" "$name" "$resolved"
     done
@@ -3184,7 +3060,7 @@ required = {
 }
 commands = (
     "claude", "codex", "opencode", "mimo", "agy", "rtk", "cloak-chromium",
-    "cloakbrowser-cdp-health", "chrome-devtools-mcp", "playwright-cli", "webwright",
+    "cloakbrowser-cdp-health", "chrome-devtools-mcp", "playwright-cli",
 )
 required.update(f"__RLDYOUR_CMD_{name}__" for name in commands)
 if not required <= values.keys():

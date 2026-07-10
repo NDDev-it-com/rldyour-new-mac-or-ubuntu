@@ -103,7 +103,7 @@ def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
     version = file("VERSION").strip()
-    assert contract["adapter"]["version"] == version == "0.3.5"
+    assert contract["adapter"]["version"] == version == "0.3.6"
     assert json.loads(file("templates/ai-cli/package.json"))["version"] == version
     assert json.loads(file("templates/browser/provider/package.json"))["version"] == version
     assert f'version = "{version}"' in file("templates/browser/cloakbrowser-pyproject.toml")
@@ -231,7 +231,10 @@ def test_browser_stack_is_mandatory_and_fixed_to_cloak() -> None:
         "fallback_allowed": False,
         "chrome_devtools_mcp": "1.5.0",
         "playwright_cli": "0.1.17",
-        "webwright_commit": "4a46f282ec37f27d6003cc498a977939d62d9015",
+        "active_providers": ["playwright-cli", "chrome-devtools-mcp"],
+        "webwright_status": "retired-fail-closed",
+        "webwright_enabled": False,
+        "disabled_wrapper": "webwright",
     }
     assert "RLDYOUR_BROWSER_REQUIRED=1" in bootstrap
     assert "--skip-browser is unsupported" in bootstrap
@@ -243,17 +246,15 @@ def test_browser_stack_is_mandatory_and_fixed_to_cloak() -> None:
         "@playwright/cli": "0.1.17",
         "chrome-devtools-mcp": "1.5.0",
     }
-    assert "4a46f282ec37f27d6003cc498a977939d62d9015" in common
-    assert "local_cdp_auto_start: false" in file("templates/browser/webwright-local-cdp.yaml")
     assert '"cdpEndpoint": "http://127.0.0.1:9222"' in file("templates/browser/playwright-cli.json")
-    assert "uv sync" in common and "--frozen --no-dev" in common
-    assert "webwright-uv.lock" in common
+    assert "microsoft/Webwright" not in common
+    assert "webwright-uv.lock" not in common
+    assert not (ROOT / "templates/browser/webwright-uv.lock").exists()
+    assert not (ROOT / "templates/browser/webwright-local-cdp.yaml").exists()
     assert "--frozen-lockfile" in common
     provider_lock = file("templates/browser/provider/bun.lock")
     assert '"chrome-devtools-mcp": ["chrome-devtools-mcp@1.5.0"' in provider_lock
     assert '"@playwright/cli": ["@playwright/cli@0.1.17"' in provider_lock
-    lock = file("templates/browser/webwright-uv.lock")
-    assert "version = 1" in lock and "sha256:" in lock
     cloak_lock = file("templates/browser/cloakbrowser-uv.lock")
     assert 'name = "cloakbrowser"' in cloak_lock
     assert 'version = "0.4.10"' in cloak_lock
@@ -271,6 +272,7 @@ def test_browser_fail_closed_regressions_are_guarded() -> None:
     ):
         assert forbidden in common
     assert "install|install-browser|attach)" in common
+    assert "run-code|--filename|--filename=*)" in common
     assert "'--' cannot bypass the mandatory CDP and privacy flags" in common
     assert "'--' cannot bypass the mandatory CDP configuration" in common
     assert "--endpoint|--endpoint=*" in common
@@ -278,9 +280,9 @@ def test_browser_fail_closed_regressions_are_guarded() -> None:
     assert "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1" in common
     assert "NO_UPDATE_NOTIFIER=1" in common
     assert "PWTEST_DAEMON_SESSION_DIR" in common
-    assert 'browser="${webwright_home}/src/webwright/config/local_browser.yaml"' in common
-    assert 'model="${webwright_home}/src/webwright/config/model_openai.yaml"' in common
-    assert r'"\$@" -c "\$overlay"' in common
+    assert "webwright.run.cli" not in common
+    assert "retired by the fail-closed browser policy" in common
+    assert "exit 78" in common
     assert "MainPID" in common
     assert "fixed CDP listener is not owned by the managed service PID" in common
     assert "service executable is not the verified CloakBrowser binary" in common
@@ -551,9 +553,10 @@ def test_browser_commands_are_required_in_verifiers() -> None:
             "cloakbrowser-cdp-health",
             "chrome-devtools-mcp",
             "playwright-cli",
-            "webwright",
         ):
             assert command in required
+        assert "webwright" not in required
+        assert "verify-browser-runtime.sh" in verify
     ubuntu_verify = file("scripts/ubuntu/verify.sh")
     assert "tool_host_provenance" in ubuntu_verify
     assert "ubuntu-runtime-v1" in ubuntu_verify

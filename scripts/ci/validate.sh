@@ -47,6 +47,14 @@ if data.get('adapter', {}).get('version') != (Path("${REPO_ROOT}") / 'VERSION').
 browser = data.get('browser_automation', {})
 if browser.get('provider') != 'cloakbrowser' or browser.get('required') is not True or browser.get('fallback_allowed') is not False:
     raise SystemExit('browser contract must be mandatory/fail-closed through CloakBrowser')
+if browser.get('active_providers') != ['playwright-cli', 'chrome-devtools-mcp']:
+    raise SystemExit('browser contract must expose exactly the two managed active providers')
+if (
+    browser.get('webwright_status'),
+    browser.get('webwright_enabled'),
+    browser.get('disabled_wrapper'),
+) != ('retired-fail-closed', False, 'webwright'):
+    raise SystemExit('Webwright retirement contract is incomplete')
 print(f'contract-ok:{adapter_id}')
 PY
 
@@ -66,6 +74,8 @@ require_file "$REPO_ROOT/scripts/auth-handoff.sh"
 require_file "$REPO_ROOT/scripts/ci/validate.sh"
 require_file "$REPO_ROOT/scripts/ci/lint.sh"
 require_file "$REPO_ROOT/scripts/lib/common.sh"
+require_file "$REPO_ROOT/scripts/browser_runtime_integrity.py"
+require_file "$REPO_ROOT/scripts/verify-browser-runtime.sh"
 require_file "$REPO_ROOT/scripts/macos/install.sh"
 require_file "$REPO_ROOT/scripts/macos/verify.sh"
 require_file "$REPO_ROOT/scripts/ubuntu/install.sh"
@@ -79,8 +89,11 @@ require_file "$REPO_ROOT/templates/browser/cloakbrowser-pyproject.toml"
 require_file "$REPO_ROOT/templates/browser/cloakbrowser-uv.lock"
 require_file "$REPO_ROOT/templates/browser/provider/package.json"
 require_file "$REPO_ROOT/templates/browser/provider/bun.lock"
-require_file "$REPO_ROOT/templates/browser/webwright-local-cdp.yaml"
-require_file "$REPO_ROOT/templates/browser/webwright-uv.lock"
+if [ -e "$REPO_ROOT/templates/browser/webwright-local-cdp.yaml" ] || \
+  [ -e "$REPO_ROOT/templates/browser/webwright-uv.lock" ]; then
+  echo "retired Webwright runtime inputs must not exist" >&2
+  exit 1
+fi
 
 bash "$REPO_ROOT/scripts/ci/lint.sh"
 

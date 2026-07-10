@@ -8,7 +8,7 @@ reviewed commit and the matching versioned contract.
 
 | Version | Supported |
 | --- | --- |
-| Current exact version `0.3.5` | yes |
+| Current exact tag `0.3.6` | yes |
 | Older patch, minor, or major versions | no |
 
 ## Reporting A Vulnerability
@@ -65,15 +65,23 @@ cookies, tokens, `.env` files, or credential exports to an issue or artifact.
 
 Every supported profile requires CloakBrowser `0.4.10`. A managed service owns
 the fixed endpoint `http://127.0.0.1:9222`; it must never listen on a non-loopback
-address. Chrome DevTools MCP, Playwright CLI, and Webwright run through managed
-wrappers that reject alternate endpoints, executables, configs, auto-started
-stock browsers, and browser fallbacks.
+address. The only active providers are Chrome DevTools MCP and Playwright CLI;
+their managed wrappers reject alternate endpoints, executables, configs,
+auto-started stock browsers, arbitrary Playwright code/file execution, and
+browser fallbacks. Webwright is retired: its exact compatibility wrapper exits
+`78` and must never start Python or a browser.
 
 There is no supported browser skip. `--skip-browser` and
 `RLDYOUR_SKIP_CLOAKBROWSER=1` fail closed. A missing or unhealthy managed CDP
 service is a hard error. Treat any unintended exposure of port `9222` as
 security-sensitive because CDP controls pages, cookies, storage, and browser
 JavaScript.
+
+Every successful browser apply publishes an owner-only canonical receipt that
+binds exact runtime identities, provider binaries, wrappers, service file,
+policy sources, and live service health. `scripts/verify-browser-runtime.sh`
+recomputes the complete state and fails on drift; a marker substring or a
+reachable CDP-compatible endpoint alone is never sufficient proof.
 
 Development-only CloakBrowser variables that replace the binary, download
 origin, checksum policy, browser version, or Widevine path are rejected by the
@@ -133,9 +141,10 @@ policy.
 - Ubuntu Node.js, uv, and Bun use versioned assets with tracked architecture
   hashes plus owned receipts for every managed executable; strict verification
   requires exact `~/.local/bin` links and never trusts a same-version external
-  PATH binary. Browser Node providers resolve through a tracked `bun.lock`; Webwright
-  resolves through a tracked universal `uv.lock`. Both install in frozen mode
-  rather than from live open dependency ranges.
+  PATH binary. Browser Node providers resolve through a tracked `bun.lock` and
+  CloakBrowser resolves through a tracked universal `uv.lock`; both install in
+  frozen mode rather than from live open dependency ranges. Webwright has no
+  installed dependency tree or executable runtime.
 - Available signing keys, fingerprints, hashes, or upstream manifests are
   verified before managed installation. APT key bundles must contain exactly
   one primary key with the expected fingerprint; extra primary keys fail.

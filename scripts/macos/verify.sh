@@ -31,7 +31,7 @@ required_cmds=(
   vscode-html-language-server vscode-css-language-server vscode-json-language-server
   taplo marksman terraform-ls cmake-language-server
   claude codex opencode mimo agy rtk
-  cloak-chromium cloakbrowser-cdp-health chrome-devtools-mcp playwright-cli webwright
+  cloak-chromium cloakbrowser-cdp-health chrome-devtools-mcp playwright-cli
 )
 for cmd in "${required_cmds[@]}"; do
   rldyour::require_cmd "$cmd" required
@@ -66,6 +66,7 @@ rtk --version 2>/dev/null | head -n 1 | grep -Eq '^rtk[[:space:]]+0\.43\.0([[:sp
 cloakbrowser-cdp-health
 chrome-devtools-mcp --version | grep -Fq "1.5.0"
 playwright-cli --version | grep -Fq "0.1.17"
+"$SCRIPT_DIR/../verify-browser-runtime.sh" --json
 rldyour::verify_terminal_environment
 
 if [ "$GUI_ENABLED" -eq 1 ]; then

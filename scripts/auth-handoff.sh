@@ -89,7 +89,9 @@ Authentication handoff (no credentials are managed by this repository)
 8. Browser automation
    No browser provider login is required. Verify the mandatory local boundary:
    cloakbrowser-cdp-health
-   Browser agents must use http://127.0.0.1:9222 through the managed wrappers;
+   bash scripts/verify-browser-runtime.sh
+   Browser agents must use http://127.0.0.1:9222 through the managed Playwright
+   CLI or Chrome DevTools MCP wrappers. Webwright is retired fail-closed;
    embedded or stock browsers are not an allowed fallback.
 
 9. cmux (macOS GUI profile)

@@ -27,6 +27,7 @@ check_cmd shellcheck
 SCRIPT_PATHS=(
   "$REPO_ROOT/scripts/bootstrap.sh"
   "$REPO_ROOT/scripts/auth-handoff.sh"
+  "$REPO_ROOT/scripts/verify-browser-runtime.sh"
   "$REPO_ROOT/scripts/lib/common.sh"
   "$REPO_ROOT/scripts/macos/install.sh"
   "$REPO_ROOT/scripts/macos/verify.sh"
