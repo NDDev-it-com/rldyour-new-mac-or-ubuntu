@@ -118,17 +118,52 @@ install_source_packages() {
   done
 }
 
+cask_app_path() {
+  case "$1" in
+    ghostty) printf '%s\n' "/Applications/Ghostty.app" ;;
+    cmux) printf '%s\n' "/Applications/cmux.app" ;;
+    chatgpt) printf '%s\n' "/Applications/ChatGPT.app" ;;
+    codex-app) printf '%s\n' "/Applications/Codex.app" ;;
+    claude) printf '%s\n' "/Applications/Claude.app" ;;
+    *) return 1 ;;
+  esac
+}
+
+verify_existing_cask_app() {
+  local cask="$1"
+  local app_path="$2"
+  [ -d "$app_path" ] || {
+    rldyour::log "error" "existing cask destination is not an app bundle: $app_path"
+    return 1
+  }
+  /usr/bin/codesign --verify --deep --strict "$app_path" >/dev/null 2>&1 || {
+    rldyour::log "error" "existing unmanaged app failed code-signature verification: $app_path"
+    return 1
+  }
+  /usr/sbin/spctl --assess --type execute "$app_path" >/dev/null 2>&1 || {
+    rldyour::log "error" "existing unmanaged app failed Gatekeeper assessment: $app_path"
+    return 1
+  }
+  rldyour::log "ok" "preserving signed and notarized unmanaged cask destination for $cask: $app_path"
+}
+
 ensure_cask() {
   local cask="$1"
+  local app_path=""
   if [ "$RLDYOUR_DRY_RUN" -eq 1 ] && ! command -v brew >/dev/null 2>&1; then
     rldyour::log "info" "[DRY-RUN] brew install --cask ${cask}"
     return 0
   fi
   if brew list --cask "$cask" >/dev/null 2>&1; then
     rldyour::log "ok" "preserving installed Homebrew cask: $cask"
-  else
-    rldyour::run brew install --cask "$cask"
+    return 0
   fi
+  app_path="$(cask_app_path "$cask" || true)"
+  if [ -n "$app_path" ] && [ -e "$app_path" ]; then
+    verify_existing_cask_app "$cask" "$app_path"
+    return 0
+  fi
+  rldyour::run brew install --cask "$cask"
 }
 
 install_gui_apps() {
