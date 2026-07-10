@@ -4,6 +4,13 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+
+## [0.3.7] - 2026-07-10
+
+### Changed
+
+- Adopt the verified Antigravity CLI 1.1.1 runtime and immutable platform artifacts.
+
 ## [0.3.6] - 2026-07-10
 
 ### Changed
