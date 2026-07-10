@@ -2,7 +2,7 @@
   "schema_version": 2,
   "adapter": {
     "id": "new-mac-or-ubuntu",
-    "version": "0.3.6"
+    "version": "0.3.7"
   },
   "verified_on": "2026-07-10",
   "targets": {
@@ -60,7 +60,7 @@
     "codex": "0.144.1",
     "opencode": "1.17.18",
     "mimocode": "0.1.5",
-    "antigravity": "1.1.0"
+    "antigravity": "1.1.1"
   },
   "runtime_support": {
     "ubuntu_node_lts": "24.18.0",
@@ -116,9 +116,9 @@
     "homebrew_pkg_version": "6.0.9",
     "homebrew_pkg_sha256": "525599bd2dcbda29857120234336b0103ad5283a3dc8511f72066eeb917abd3c",
     "homebrew_installer_team": "927JGANW46",
-    "antigravity_macos_arm64_sha512": "cb477ea9a556d9e6d67ee225ff7569255f779761b2c6d4ffb424e73d007c085832e9ab4f30b542dc0e74b58370c4513dbe785c5e05d3d9053cff0bb7d65f4819",
-    "antigravity_linux_x64_sha512": "4baada08e5209775de16f5012f924e3f66d9c9d99e1eda78205da3d9b527225452804a3d573fa54810e2a2e66729a99cd9076442948625a30982acc92381f303",
-    "antigravity_linux_arm64_sha512": "516f374a56495396d1350b3484b4b16de4f87273a679a0de0c49ba06983a0361fe15cfb6a24925cafd6d40a648157efd0c1f2041b3345e60468d4cb85c89b99e",
+    "antigravity_macos_arm64_sha512": "2993c4b43d2703cf796848e1a02b71e2e0588387d8dc2424435207eedbbc2097251ca0ba321b99d364358f7e6e98df1ac1757c1f5edaca8d53abaa26123e7f49",
+    "antigravity_linux_x64_sha512": "fcebad8247e0453097e2b26d839371c88df040e6fb18fac3fd8072851194739cf4624041469b57f529bc9c2e1140a6ce4cd5e7144e64e6efc5605a9f10a862b7",
+    "antigravity_linux_arm64_sha512": "6d3d89c7b88d4e22e2eef937ce731345299657ac7a14236a93a5f9dce67eb7251845ccc9804b0ab1881125ff6165311ce73c6933c1376ec3b966659a94753e60",
     "antigravity_auto_update": false,
     "rtk_artifact_version": "0.43.0",
     "rtk_macos_arm64_sha256": "8a17e49acbd378997eb21d0eb6f7f861111f35b4fc9b1c74edf4c7448e576c65",
