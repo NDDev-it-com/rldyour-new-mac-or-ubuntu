@@ -636,7 +636,7 @@ rldyour::install_antigravity_artifact() {
   local receipt="$namespace/$version/agy.sha256"
   local version_dir="$namespace/$version"
   local launcher="$HOME/.local/bin/agy"
-  local archive stage extracted actual_version binary_sha256 receipt_sha256 publish_tmp
+  local archive stage extracted actual_version binary_sha256 receipt_sha256 publish_tmp signature_details
   local existing_version backup
 
   if [ "$dry_run" -eq 1 ]; then
@@ -685,11 +685,17 @@ rldyour::install_antigravity_artifact() {
       return 1
     fi
     if [ "$(uname -s)" = "Darwin" ]; then
-      codesign -dv --verbose=4 "$extracted" 2>&1 | \
-        grep -Fq "Developer ID Application: Google LLC (EQHXZ8M8AV)" || {
+      signature_details="$(codesign -dv --verbose=4 "$extracted" 2>&1)" || {
+        rldyour::log "error" "Antigravity macOS code signature is invalid"
+        return 1
+      }
+      case "$signature_details" in
+        *"Authority=Developer ID Application: Google LLC (EQHXZ8M8AV)"*"TeamIdentifier=EQHXZ8M8AV"*) ;;
+        *)
           rldyour::log "error" "Antigravity macOS code signer mismatch"
           return 1
-        }
+          ;;
+      esac
     fi
     mkdir -p "$(dirname "$destination")" || return 1
     chmod 0700 "$(dirname "$destination")" || return 1
@@ -878,6 +884,53 @@ else:
     raise SystemExit(1)
 
 raise SystemExit(0 if actual in candidates else 1)
+PY
+}
+
+# Recognize the fail-closed launcher pair emitted by the current managed stack.
+# This is used only to recover a transaction that already upgraded the wrappers
+# before restoring an exact legacy home. The embedded absolute binary path and
+# SHA-256 must still resolve inside the canonical CloakBrowser cache.
+rldyour::_is_current_managed_cloak_launcher_set() {
+  local bin_dir=$1 cache=$2 fp=$3 chromium stealth launcher raw_binary binary expected actual
+  chromium="$bin_dir/cloak-chromium"
+  stealth="$bin_dir/cloak-chromium-stealth"
+  for launcher in "$chromium" "$stealth"; do
+    [ -f "$launcher" ] && [ ! -L "$launcher" ] || return 1
+    [ "$(grep -Fxc '# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1' "$launcher")" -eq 1 ] || return 1
+  done
+  [ "$(grep -Fxc "CLOAKBROWSER_CACHE_DIR=\"${cache}\"" "$chromium")" -eq 1 ] || return 1
+  [ "$(grep -c '^bin=' "$chromium")" -eq 1 ] || return 1
+  raw_binary="$(sed -n 's/^bin=//p' "$chromium")"
+  binary="$(rldyour::_isolated_python python3 -c \
+    'import shlex, sys; parts = shlex.split(sys.argv[1]); sys.exit(1) if len(parts) != 1 else print(parts[0])' \
+    "$raw_binary" 2>/dev/null)" || return 1
+  case "$binary" in "$cache"/*) ;; *) return 1 ;; esac
+  [ -x "$binary" ] || return 1
+  # Match literal managed-wrapper shell variables.
+  # shellcheck disable=SC2016
+  expected="$(sed -n 's/^if \[ "\$actual_sha256" != "\([0-9a-f]\{64\}\)" \]; then$/\1/p' "$chromium")"
+  printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || return 1
+  actual="$(rldyour::sha256_file "$binary")" || return 1
+  [ "$actual" = "$expected" ] || return 1
+  # Require the literal final exec contract.
+  # shellcheck disable=SC2016
+  grep -Fxq 'exec "$bin" "$@"' "$chromium" || return 1
+  rldyour::_isolated_python python3 - "$stealth" "$bin_dir" "$fp" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+bin_dir, fingerprint = sys.argv[2:]
+expected = f'''#!/usr/bin/env bash
+# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1
+# CloakBrowser with safe default fingerprint flags. The Chromium sandbox stays on.
+set -euo pipefail
+exec "{bin_dir}/cloak-chromium" \\
+  --fingerprint-platform="{fingerprint}" \\
+  --no-first-run --no-default-browser-check "$@"
+'''
+raise SystemExit(0 if path.read_text(encoding="utf-8") == expected else 1)
 PY
 }
 
@@ -1585,17 +1638,37 @@ rldyour::_rollback_cloak_launchd_service() {
   local failed=0 service_target="${domain}/com.rldyour.cloakbrowser"
 
   launchctl bootout "$service_target" >/dev/null 2>&1 || true
+  if ! rldyour::_wait_launchd_service_state "$service_target" unloaded; then
+    rldyour::log "error" "CloakBrowser launchd service did not quiesce during rollback"
+    return 1
+  fi
   rldyour::_restore_cloak_service_file \
     "$plist" "$snapshot" "$prior_present" "$marker" || failed=1
   if [ "$prior_active" -eq 1 ]; then
     if [ "$failed" -eq 0 ]; then
-      launchctl bootstrap "$domain" "$plist" >/dev/null 2>&1 || failed=1
+      # launchctl can report a transient bootstrap error while the job is
+      # already becoming visible. The bounded state check is authoritative.
+      launchctl bootstrap "$domain" "$plist" >/dev/null 2>&1 || true
+      rldyour::_wait_launchd_service_state "$service_target" loaded || failed=1
     fi
-    launchctl print "$service_target" >/dev/null 2>&1 || failed=1
-  elif launchctl print "$service_target" >/dev/null 2>&1; then
+  elif ! rldyour::_wait_launchd_service_state "$service_target" unloaded; then
     failed=1
   fi
   [ "$failed" -eq 0 ]
+}
+
+rldyour::_wait_launchd_service_state() {
+  local target=$1 expected=$2 attempts=${3:-50} attempt=0 loaded
+  while [ "$attempt" -lt "$attempts" ]; do
+    loaded=0
+    launchctl print "$target" >/dev/null 2>&1 && loaded=1
+    case "$expected:$loaded" in
+      loaded:1|unloaded:0) return 0 ;;
+    esac
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+  return 1
 }
 
 rldyour::_rollback_cloak_systemd_service() {
@@ -1834,11 +1907,12 @@ rldyour::install_cloakbrowser_daemon() {
         rm -f "$service_snapshot"
         return 1
       }
-      # Previous releases used the stable launcher in the service definition.
-      # The launcher has already advanced by this phase, so normalize only that
-      # legacy reference to the verified immutable binary before retaining the
-      # rollback snapshot.
-      rldyour::_isolated_python python3 - "$service_snapshot" "$xml_launcher" "$rollback_binary" "$rollback_sha256" <<'PY' || {
+      # Marker-bearing prior releases may use the stable launcher in the service
+      # definition. Normalize those snapshots to the verified immutable binary.
+      # An exact markerless legacy service stays byte-identical because the outer
+      # home migration also snapshots and restores its matching launcher pair.
+      if [ "$legacy_owned" -ne 1 ]; then
+        rldyour::_isolated_python python3 - "$service_snapshot" "$xml_launcher" "$rollback_binary" "$rollback_sha256" <<'PY' || {
 import html
 import pathlib
 import re
@@ -1858,9 +1932,10 @@ if marker not in source:
 source = source.replace(marker, marker + f"\n<!-- rldyour-binary-sha256: {sys.argv[4]} -->", 1)
 path.write_text(source, encoding="utf-8")
 PY
-        rm -f "$service_snapshot"
-        return 1
-      }
+          rm -f "$service_snapshot"
+          return 1
+        }
+      fi
     fi
     trap '[ -z "${service_snapshot:-}" ] || rm -f "$service_snapshot"; trap - RETURN' RETURN
     rldyour::_install_managed_browser_file "$service_file" "$service_marker" 0600 "" "$legacy_owned" <<PLIST || return 1
@@ -1891,18 +1966,23 @@ PY
 </dict>
 </plist>
 PLIST
-    if [ "$service_prior_active" -eq 1 ] && \
-      ! launchctl bootout "$service_target" >/dev/null 2>&1; then
-      rollback_status=0
-      rldyour::_rollback_cloak_service_handoff \
-        "$service_kind" "$service_file" "$service_snapshot" \
-        "$service_prior_present" "$service_prior_active" "$service_prior_enabled" \
-        "$service_domain" || rollback_status=1
-      [ "$rollback_status" -eq 0 ] || rldyour::log "error" "launchd rollback was incomplete"
-      rldyour::log "error" "launchctl could not stop the prior CloakBrowser service"
-      return 1
+    if [ "$service_prior_active" -eq 1 ]; then
+      if ! launchctl bootout "$service_target" >/dev/null 2>&1 || \
+        ! rldyour::_wait_launchd_service_state "$service_target" unloaded; then
+        rollback_status=0
+        rldyour::_rollback_cloak_service_handoff \
+          "$service_kind" "$service_file" "$service_snapshot" \
+          "$service_prior_present" "$service_prior_active" "$service_prior_enabled" \
+          "$service_domain" || rollback_status=1
+        [ "$rollback_status" -eq 0 ] || rldyour::log "error" "launchd rollback was incomplete"
+        rldyour::log "error" "launchctl could not quiesce the prior CloakBrowser service"
+        return 1
+      fi
     fi
-    if ! launchctl bootstrap "$service_domain" "$service_file" >/dev/null 2>&1; then
+    # launchd unload is asynchronous. Treat bounded state convergence, not the
+    # immediate bootstrap exit status, as the handoff commit criterion.
+    launchctl bootstrap "$service_domain" "$service_file" >/dev/null 2>&1 || true
+    if ! rldyour::_wait_launchd_service_state "$service_target" loaded; then
       rollback_status=0
       rldyour::_rollback_cloak_service_handoff \
         "$service_kind" "$service_file" "$service_snapshot" \
@@ -1996,9 +2076,10 @@ PLIST
         rm -f "$service_snapshot"
         return 1
       }
-      # See the launchd path above: a rollback service must never resolve
-      # through a stable launcher that this bootstrap has already replaced.
-      rldyour::_isolated_python python3 - "$service_snapshot" "$bin_dir/cloak-chromium" "$rollback_binary" "$rollback_sha256" <<'PY' || {
+      # See the launchd path above. Marker-bearing snapshots are normalized;
+      # exact markerless legacy services retain their matching launcher pair.
+      if [ "$legacy_owned" -ne 1 ]; then
+        rldyour::_isolated_python python3 - "$service_snapshot" "$bin_dir/cloak-chromium" "$rollback_binary" "$rollback_sha256" <<'PY' || {
 import pathlib
 import re
 import sys
@@ -2017,9 +2098,10 @@ if marker not in source:
 source = source.replace(marker, marker + f"\n# rldyour-binary-sha256={sys.argv[4]}", 1)
 path.write_text(source, encoding="utf-8")
 PY
-        rm -f "$service_snapshot"
-        return 1
-      }
+          rm -f "$service_snapshot"
+          return 1
+        }
+      fi
     fi
     trap '[ -z "${service_snapshot:-}" ] || rm -f "$service_snapshot"; trap - RETURN' RETURN
     rldyour::_install_managed_browser_file "$service_file" "$service_marker" 0600 "" "$legacy_owned" <<UNIT || return 1
@@ -2415,12 +2497,61 @@ RUNTIME
   trap - RETURN
 }
 
+# Bun packages may arrive with group-writable entrypoints even under a private
+# umask. Normalize a freshly staged tree before publication, and validate every
+# reused tree. Symlinks are allowed only when they resolve back inside the same
+# content-addressed runtime; all material files and directories must be owned by
+# the current UID and must never remain group/world-writable.
+rldyour::_browser_node_runtime_permissions() {
+  local mode=$1 root=$2
+  case "$mode" in normalize|validate) ;; *) return 2 ;; esac
+  rldyour::_isolated_python python3 -I - "$mode" "$root" <<'PY'
+import os
+import pathlib
+import stat
+import sys
+
+mode, raw_root = sys.argv[1:]
+root = pathlib.Path(raw_root)
+root_real = root.resolve(strict=True)
+uid = os.getuid()
+
+
+def inspect(path: pathlib.Path) -> None:
+    metadata = path.lstat()
+    if metadata.st_uid != uid:
+        raise SystemExit(f"runtime path has a foreign owner: {path}")
+    if stat.S_ISLNK(metadata.st_mode):
+        try:
+            path.resolve(strict=True).relative_to(root_real)
+        except (FileNotFoundError, ValueError):
+            raise SystemExit(f"runtime symlink escaped its content-addressed root: {path}")
+        return
+    if not (stat.S_ISREG(metadata.st_mode) or stat.S_ISDIR(metadata.st_mode)):
+        raise SystemExit(f"runtime contains an unsupported file type: {path}")
+    permissions = stat.S_IMODE(metadata.st_mode)
+    if mode == "normalize" and permissions & 0o022:
+        path.chmod(permissions & ~0o022)
+        metadata = path.lstat()
+    if metadata.st_mode & 0o022:
+        raise SystemExit(f"runtime path is group/world-writable: {path}")
+
+
+inspect(root)
+for directory, directories, files in os.walk(root, followlinks=False):
+    base = pathlib.Path(directory)
+    for name in directories + files:
+        inspect(base / name)
+PY
+}
+
 rldyour::_install_browser_node_bundle() {
   local chrome_version=$1 playwright_version=$2 browser_home=$3
   local manifest_source=$4 lock_source=$5 chrome_output_var=$6 playwright_output_var=$7
   local runtime_output_var=${8:-}
   local runtimes="$browser_home/node-runtimes"
   local runtime_label content_id runtime_name destination runtime_marker stage=""
+  local rebuild_unsafe=0 preserved=""
   local chrome_path playwright_path actual_chrome actual_playwright
 
   runtime_label="browser-node|chrome=${chrome_version}|playwright=${playwright_version}|platform=$(uname -s)-$(uname -m)"
@@ -2439,8 +2570,22 @@ rldyour::_install_browser_node_bundle() {
     rldyour::log "error" "browser Node runtime destination is invalid; preserved: ${destination}"
     return 1
   fi
+  if [ -d "$destination" ]; then
+    if [ ! -f "$runtime_marker" ] || [ -L "$runtime_marker" ] || \
+      ! grep -Fxq "# Managed by rldyour-new-mac-or-ubuntu: browser-node-runtime-v2" "$runtime_marker" || \
+      ! grep -Fxq "identity=${content_id}" "$runtime_marker" || \
+      ! cmp -s "$manifest_source" "$destination/package.json" || \
+      ! cmp -s "$lock_source" "$destination/bun.lock"; then
+      rldyour::log "error" "content-addressed browser Node runtime identity is invalid; preserved: ${destination}"
+      return 1
+    fi
+    if ! rldyour::_browser_node_runtime_permissions validate "$destination"; then
+      rebuild_unsafe=1
+      rldyour::log "warn" "browser Node runtime permissions are unsafe; rebuilding from the frozen lock"
+    fi
+  fi
   trap 'if [ -n "${stage:-}" ]; then rm -rf "$stage"; fi; trap - RETURN' RETURN
-  if [ ! -d "$destination" ]; then
+  if [ ! -d "$destination" ] || [ "$rebuild_unsafe" -eq 1 ]; then
     stage="$(mktemp -d "$runtimes/.${runtime_name}.staging.XXXXXX")" || return 1
     chmod 0700 "$stage" || return 1
     install -m 0600 "$manifest_source" "$stage/package.json" || return 1
@@ -2455,6 +2600,10 @@ RUNTIME
     if ! bun install --cwd "$stage" --frozen-lockfile --ignore-scripts \
       --production >/dev/null 2>&1; then
       rldyour::log "error" "isolated browser provider staging installation failed"
+      return 1
+    fi
+    if ! rldyour::_browser_node_runtime_permissions normalize "$stage"; then
+      rldyour::log "error" "staged browser provider runtime permissions are unsafe"
       return 1
     fi
     chrome_path="$stage/node_modules/.bin/chrome-devtools-mcp"
@@ -2475,7 +2624,19 @@ RUNTIME
       rldyour::log "error" "staged browser provider executable smoke check failed"
       return 1
     fi
-    mv "$stage" "$destination" || return 1
+    if [ "$rebuild_unsafe" -eq 1 ]; then
+      preserved="$runtimes/.${runtime_name}.unsafe-$(date -u +%Y%m%dT%H%M%SZ)"
+      [ ! -e "$preserved" ] && [ ! -L "$preserved" ] || return 1
+      mv "$destination" "$preserved" || return 1
+      if ! mv "$stage" "$destination"; then
+        mv "$preserved" "$destination" || \
+          rldyour::log "error" "browser Node runtime rebuild and restoration both failed"
+        return 1
+      fi
+      rldyour::log "warn" "preserved replaced unsafe browser Node runtime: ${preserved}"
+    else
+      mv "$stage" "$destination" || return 1
+    fi
     stage=""
   fi
 
@@ -2485,6 +2646,10 @@ RUNTIME
     ! cmp -s "$manifest_source" "$destination/package.json" || \
     ! cmp -s "$lock_source" "$destination/bun.lock"; then
     rldyour::log "error" "content-addressed browser Node runtime identity is invalid; preserved: ${destination}"
+    return 1
+  fi
+  if ! rldyour::_browser_node_runtime_permissions validate "$destination"; then
+    rldyour::log "error" "published browser Node runtime permissions are unsafe"
     return 1
   fi
   chrome_path="$destination/node_modules/.bin/chrome-devtools-mcp"
@@ -2576,7 +2741,196 @@ rldyour::_publish_browser_runtime_receipt() {
 # Packages live under a dedicated managed data directory; small PATH wrappers
 # enforce the one fixed CloakBrowser CDP endpoint. Existing global packages and
 # unmanaged config files are neither removed nor overwritten.
-rldyour::install_browser_providers() {
+rldyour::_is_exact_legacy_cloak_home() {
+  local home=$1 bin_dir=$2 cache="$1/cache" fp service_file version
+  [ -d "$home" ] && [ ! -L "$home" ] && [ -O "$home" ] || return 1
+  [ -d "$home/.venv" ] && [ ! -L "$home/.venv" ] || return 1
+  [ -x "$home/.venv/bin/python" ] || return 1
+  [ -d "$cache" ] && [ ! -L "$cache" ] || return 1
+  [ -d "$home/daemon-profile" ] && [ ! -L "$home/daemon-profile" ] || return 1
+  version="$(rldyour::_isolated_python "$home/.venv/bin/python" -c 'from importlib.metadata import version; print(version("cloakbrowser"))' 2>/dev/null || true)"
+  printf '%s' "$version" | grep -Eq '^0\.4\.[0-9]+$' || return 1
+  case "$(uname -s)" in
+    Darwin)
+      fp="macos"
+      service_file="$HOME/Library/LaunchAgents/com.rldyour.cloakbrowser.plist"
+      rldyour::_is_legacy_cloak_service_file \
+        launchd "$service_file" "$bin_dir" "$home" "$home/daemon-profile" "$fp" 9222 || return 1
+      ;;
+    Linux)
+      fp="linux"
+      service_file="$HOME/.config/systemd/user/rldyour-cloakbrowser.service"
+      rldyour::_is_legacy_cloak_service_file \
+        systemd "$service_file" "$bin_dir" "$home" "$home/daemon-profile" "$fp" 9222 || return 1
+      ;;
+    *) return 1 ;;
+  esac
+  if rldyour::_is_legacy_cloak_launcher_file \
+    chromium "$bin_dir/cloak-chromium" "$bin_dir" "$cache" "$fp" && \
+    rldyour::_is_legacy_cloak_launcher_file \
+      stealth "$bin_dir/cloak-chromium-stealth" "$bin_dir" "$cache" "$fp"; then
+    :
+  elif ! rldyour::_is_current_managed_cloak_launcher_set "$bin_dir" "$cache" "$fp"; then
+    return 1
+  fi
+  env -u PYTHONPATH -u PYTHONHOME \
+    "$bin_dir/cloak-chromium" --version >/dev/null 2>&1 || return 1
+}
+
+rldyour::_resume_legacy_cloak_service() {
+  local was_active=$1 target
+  [ "$was_active" -eq 1 ] || return 0
+  case "$(uname -s)" in
+    Darwin)
+      target="gui/$(id -u)/com.rldyour.cloakbrowser"
+      if launchctl print "$target" >/dev/null 2>&1; then
+        return 0
+      fi
+      launchctl bootstrap \
+        "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.rldyour.cloakbrowser.plist" >/dev/null 2>&1 || true
+      rldyour::_wait_launchd_service_state "$target" loaded
+      ;;
+    Linux)
+      systemctl --user daemon-reload >/dev/null 2>&1 || return 1
+      systemctl --user start rldyour-cloakbrowser.service >/dev/null 2>&1 || return 1
+      systemctl --user is-active --quiet rldyour-cloakbrowser.service
+      ;;
+    *) return 0 ;;
+  esac
+}
+
+rldyour::_prepare_legacy_cloak_home() {
+  local home=$1 backup_var=$2 active_var=$3 bin_dir=$4 backup_path profile marker snapshot wrapper
+  local was_active_value=0
+  backup_path="${home}-legacy-$(date -u +%Y%m%dT%H%M%SZ)"
+  [ ! -e "$backup_path" ] && [ ! -L "$backup_path" ] || return 1
+  case "$(uname -s)" in
+    Darwin)
+      if launchctl print "gui/$(id -u)/com.rldyour.cloakbrowser" >/dev/null 2>&1; then
+        launchctl bootout "gui/$(id -u)/com.rldyour.cloakbrowser" >/dev/null 2>&1 || return 1
+        was_active_value=1
+      fi
+      ;;
+    Linux)
+      if systemctl --user is-active --quiet rldyour-cloakbrowser.service >/dev/null 2>&1; then
+        systemctl --user stop rldyour-cloakbrowser.service >/dev/null 2>&1 || return 1
+        was_active_value=1
+      fi
+      ;;
+  esac
+  if ! mv "$home" "$backup_path"; then
+    rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+    return 1
+  fi
+  snapshot="$backup_path/.rldyour-migration-wrappers"
+  if ! mkdir -m 0700 "$snapshot"; then
+    mv "$backup_path" "$home" || true
+    rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+    return 1
+  fi
+  for wrapper in \
+    cloak-chromium cloak-chromium-stealth cloakbrowser-cdp-health \
+    chrome-devtools-mcp playwright-cli webwright; do
+    if [ -e "$bin_dir/$wrapper" ] || [ -L "$bin_dir/$wrapper" ]; then
+      if [ ! -f "$bin_dir/$wrapper" ] || [ -L "$bin_dir/$wrapper" ] || \
+        ! cp -p "$bin_dir/$wrapper" "$snapshot/$wrapper"; then
+        rm -rf "$snapshot"
+        mv "$backup_path" "$home" || true
+        rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+        return 1
+      fi
+    elif ! : >"$snapshot/.absent-$wrapper"; then
+      rm -rf "$snapshot"
+      mv "$backup_path" "$home" || true
+      rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+      return 1
+    fi
+  done
+  if ! mkdir -m 0700 "$home"; then
+    rm -rf "$snapshot"
+    mv "$backup_path" "$home" || true
+    rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+    return 1
+  fi
+  profile="$backup_path/daemon-profile"
+  if [ -d "$profile" ] && [ ! -L "$profile" ]; then
+    if ! cp -a "$profile" "$home/daemon-profile"; then
+      rm -rf "$home"
+      rm -rf "$snapshot"
+      mv "$backup_path" "$home" || true
+      rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+      return 1
+    fi
+  fi
+  marker="$home/.rldyour-browser-stack"
+  if ! rldyour::_install_managed_browser_file \
+    "$marker" "# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1" 0600 <<'MARKER'
+# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1
+# This dedicated directory may be updated only by the browser bootstrap layer.
+MARKER
+  then
+    rm -rf "$home"
+    rm -rf "$snapshot"
+    mv "$backup_path" "$home" || true
+    rldyour::_resume_legacy_cloak_service "$was_active_value" || true
+    return 1
+  fi
+  printf -v "$backup_var" '%s' "$backup_path"
+  printf -v "$active_var" '%s' "$was_active_value"
+  rldyour::log "info" "preserved exact legacy CloakBrowser home before managed migration: ${backup_path}"
+}
+
+rldyour::_restore_legacy_cloak_home() {
+  local home=$1 backup=$2 legacy_was_active=$3 bin_dir=$4 failed snapshot wrapper
+  local destination restore_tmp marker="# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1"
+  [ -n "$backup" ] && [ -d "$backup" ] && [ ! -L "$backup" ] || return 1
+  if [ -e "$home" ] || [ -L "$home" ]; then
+    failed="${home}-failed-$(date -u +%Y%m%dT%H%M%SZ)"
+    mv "$home" "$failed" || return 1
+    rldyour::log "warn" "preserved failed managed CloakBrowser migration for review: ${failed}"
+  fi
+  mv "$backup" "$home" || return 1
+  snapshot="$home/.rldyour-migration-wrappers"
+  if [ -d "$snapshot" ] && [ ! -L "$snapshot" ]; then
+    for wrapper in \
+      cloak-chromium cloak-chromium-stealth cloakbrowser-cdp-health \
+      chrome-devtools-mcp playwright-cli webwright; do
+      destination="$bin_dir/$wrapper"
+      if [ -f "$snapshot/$wrapper" ] && [ ! -L "$snapshot/$wrapper" ]; then
+        if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+          return 1
+        fi
+        if [ -f "$destination" ] && ! cmp -s "$snapshot/$wrapper" "$destination" && \
+          ! grep -Fxq "$marker" "$destination"; then
+          rldyour::log "error" "concurrently changed wrapper is preserved during rollback: ${destination}"
+          return 1
+        fi
+        restore_tmp="$(mktemp "$bin_dir/.${wrapper}.restore.XXXXXX")" || return 1
+        if ! cp -p "$snapshot/$wrapper" "$restore_tmp" || ! mv -f "$restore_tmp" "$destination"; then
+          rm -f "$restore_tmp"
+          return 1
+        fi
+      elif [ -f "$snapshot/.absent-$wrapper" ] && [ ! -L "$snapshot/.absent-$wrapper" ]; then
+        if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+          return 1
+        fi
+        if [ -f "$destination" ] && ! grep -Fxq "$marker" "$destination"; then
+          rldyour::log "error" "new unmanaged wrapper is preserved during rollback: ${destination}"
+          return 1
+        fi
+        rm -f "$destination" || return 1
+      else
+        rldyour::log "error" "legacy wrapper snapshot is incomplete: ${wrapper}"
+        return 1
+      fi
+    done
+    rm -rf "$snapshot" || return 1
+  fi
+  rldyour::_resume_legacy_cloak_service "$legacy_was_active" || return 1
+  rldyour::log "ok" "restored exact legacy CloakBrowser home after failed migration: ${home}"
+}
+
+rldyour::_install_browser_providers_impl() {
   local dry_run="${RLDYOUR_DRY_RUN:-1}"
   local chrome_version="1.5.0"
   local playwright_version="0.1.17"
@@ -2889,6 +3243,44 @@ WEBWRIGHT
   }
 
   rldyour::log "ok" "browser providers installed: chrome-devtools-mcp ${chrome_version}, Playwright CLI ${playwright_version}; Webwright retired fail-closed"
+}
+
+rldyour::install_browser_providers() {
+  local dry_run="${RLDYOUR_DRY_RUN:-1}"
+  local home bin_dir backup="" legacy_was_active=0
+  home="$(rldyour::_cloak_home)"
+  bin_dir="$HOME/.local/bin"
+  # Reject explicit trust-boundary overrides before inspecting local migration
+  # state so the public entry point is deterministic and fail-closed on every
+  # host, including dry-run planning against an existing legacy installation.
+  rldyour::_reject_cloak_trust_overrides || return 1
+  if [ -d "$home" ] && [ ! -f "$home/.rldyour-browser-stack" ] && \
+    [ -n "$(find "$home" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+    if ! rldyour::_is_exact_legacy_cloak_home "$home" "$bin_dir"; then
+      rldyour::log "error" "CloakBrowser home is unmanaged and does not match an exact legacy rldyour installation; preserved: ${home}"
+      return 1
+    fi
+    if [ "$dry_run" -eq 1 ]; then
+      rldyour::log "info" "[DRY-RUN] preserve exact legacy CloakBrowser home, copy its daemon profile, and migrate transactionally"
+      rldyour::_install_browser_providers_impl
+      return
+    fi
+    rldyour::_prepare_legacy_cloak_home "$home" backup legacy_was_active "$bin_dir" || {
+      rldyour::log "error" "could not stage the exact legacy CloakBrowser home for managed migration"
+      return 1
+    }
+  fi
+  if rldyour::_install_browser_providers_impl; then
+    if [ -n "$backup" ]; then
+      rldyour::log "ok" "managed CloakBrowser migration completed; legacy backup retained: ${backup}"
+    fi
+    return 0
+  fi
+  if [ -n "$backup" ] && ! rldyour::_restore_legacy_cloak_home \
+    "$home" "$backup" "$legacy_was_active" "$bin_dir"; then
+    rldyour::log "error" "managed CloakBrowser migration failed and legacy restoration also failed"
+  fi
+  return 1
 }
 
 # --- Terminal layer ----------------------------------------------------------

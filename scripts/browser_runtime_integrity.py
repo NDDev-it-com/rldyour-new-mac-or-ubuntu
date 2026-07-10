@@ -15,11 +15,10 @@ import sys
 from pathlib import Path
 from typing import Any, NoReturn
 
-
 ROOT = Path(__file__).resolve().parents[1]
 OWNER = "rldyour-new-mac-or-ubuntu"
 SCHEMA = "rldyour-browser-runtime-receipt-v1"
-BOOTSTRAP_VERSION = "0.3.8"
+BOOTSTRAP_VERSION = "0.3.9"
 MARKER = "# Managed by rldyour-new-mac-or-ubuntu: browser-stack-v1"
 ENDPOINT = "http://127.0.0.1:9222"
 CHROME_VERSION = "1.5.0"
@@ -152,6 +151,17 @@ def content_id(label: str, inputs: list[Path]) -> str:
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def cloak_runtime_identity(platform_label: str) -> str:
+    """Return the installer's ID for repository-named Cloak runtime inputs."""
+    return content_id(
+        f"cloakbrowser|version={CLOAK_VERSION}|platform={platform_label}",
+        [
+            ROOT / "templates/browser/cloakbrowser-pyproject.toml",
+            ROOT / "templates/browser/cloakbrowser-uv.lock",
+        ],
+    )
 
 
 def package_version(path: Path) -> str:
@@ -325,10 +335,13 @@ def collect_state(
     cloak_project = cloak_runtime / "pyproject.toml"
     cloak_lock = cloak_runtime / "uv.lock"
     cloak_marker = cloak_runtime / ".rldyour-runtime"
-    cloak_identity = content_id(
-        f"cloakbrowser|version={CLOAK_VERSION}|platform={platform_label}",
-        [cloak_project, cloak_lock],
-    )
+    cloak_project_source = ROOT / "templates/browser/cloakbrowser-pyproject.toml"
+    cloak_lock_source = ROOT / "templates/browser/cloakbrowser-uv.lock"
+    # The installer derives the content ID from the repository-owned source
+    # inputs before publishing them under their conventional runtime names.
+    # Preserve those logical source names here; hashing the renamed installed
+    # copies would produce a different identity even when every byte matches.
+    cloak_identity = cloak_runtime_identity(platform_label)
     if cloak_runtime.name != f"cloak-{CLOAK_VERSION}-{cloak_identity}":
         fail("CloakBrowser content-addressed runtime path is wrong")
     cloak_values = parse_exact_kv_marker(
@@ -338,15 +351,9 @@ def collect_state(
     )
     if cloak_values != {"identity": cloak_identity, "cloakbrowser": CLOAK_VERSION}:
         fail("CloakBrowser runtime marker identity is wrong")
-    if (
-        cloak_project.read_bytes()
-        != (ROOT / "templates/browser/cloakbrowser-pyproject.toml").read_bytes()
-    ):
+    if cloak_project.read_bytes() != cloak_project_source.read_bytes():
         fail("installed CloakBrowser project differs from the release template")
-    if (
-        cloak_lock.read_bytes()
-        != (ROOT / "templates/browser/cloakbrowser-uv.lock").read_bytes()
-    ):
+    if cloak_lock.read_bytes() != cloak_lock_source.read_bytes():
         fail("installed CloakBrowser lock differs from the release template")
 
     binary_receipt = validate_binary_receipt(cloak_home, cloak_binary)

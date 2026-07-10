@@ -95,7 +95,10 @@ Authentication handoff (no credentials are managed by this repository)
    embedded or stock browsers are not an allowed fallback.
 
 9. cmux (macOS GUI profile)
-   After all CLIs are on PATH: cmux hooks setup
+   After all CLIs are on PATH, if bootstrap could not configure cmux:
+     cmux hooks codex install --yes
+     cmux hooks opencode install --yes
+     cmux hooks antigravity install --yes
 
 Run `bash scripts/auth-handoff.sh check` for non-secret CLI status probes.
 EOF

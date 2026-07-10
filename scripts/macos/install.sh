@@ -207,7 +207,13 @@ install_bun_lsps() {
 configure_cmux_hooks() {
   [ "$GUI_ENABLED" -eq 1 ] || return 0
   if command -v cmux >/dev/null 2>&1; then
-    rldyour::run cmux hooks setup
+    # Keep bootstrap non-interactive and scoped to owner-standard agents. The
+    # generic setup command prompts for every detected integration and can
+    # create unrelated configuration on an otherwise clean host.
+    local agent
+    for agent in codex opencode antigravity; do
+      rldyour::run cmux hooks "$agent" install --yes
+    done
   else
     rldyour::log "info" "cmux hooks will be configured after cmux first appears on PATH"
   fi
