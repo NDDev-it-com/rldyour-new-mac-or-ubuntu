@@ -1,7 +1,7 @@
 <!-- Memory Metadata
 Last updated: 2026-07-10
 Last verified: 2026-07-10
-Last commit: 911265b feat: add secure role-aware bootstrap profiles
+Last commit: 0ec6ec6 fix(ci): provision bootstrap validation tools
 Scope: README.md, VERSION, CHANGELOG.md, config/rldyour-contract.json, scripts/**, templates/**, tests/**, .github/workflows/**
 Area: RELEASE
 -->
@@ -42,7 +42,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - Existing unmanaged state is preserved. Managed runtime and service publication is content-addressed, health-gated, and rollback-aware.
 
 ## Current State
-- Current product/config version is `0.3.0`.
+- Current product/config version is `0.3.1`.
 - Supported targets are Apple Silicon macOS desktop and Ubuntu 24.04/26.04 desktop/server on amd64 or arm64. Desktop Docker mode is always `none`; server Docker is explicit `none`, `rootful`, or `rootless`.
 - Exact AI pins are Claude Code `2.1.206`, Codex CLI `0.144.1`, OpenCode `1.17.18`, MiMoCode `0.1.5`, and Antigravity `1.1.0` with self-update disabled.
 - The mandatory browser baseline is CloakBrowser `0.4.10`, Chrome DevTools MCP `1.5.0`, Playwright CLI `0.1.17`, and Webwright commit `4a46f282ec37f27d6003cc498a977939d62d9015` on loopback CDP `127.0.0.1:9222`.
@@ -50,7 +50,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - Ubuntu server hardening is opt-in. SSH key/algorithm/Match context, UFW operator CIDR, Docker ownership, APT key identity, time service, Fail2ban, systemd linger, and rollback state are validated fail closed.
 - Existing Homebrew/APT packages and healthy Docker workloads are preserved instead of implicitly upgraded.
 - Local CI entrypoints are `bash scripts/ci/lint.sh` and `bash scripts/ci/validate.sh`.
-- The verified 0.3.0 implementation gate is 55 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, and diff checks.
+- The verified 0.3.1 implementation gate is 57 pytest tests plus lint, validate, ShellCheck, actionlint, gitleaks, and diff checks. Hosted validation and release jobs provision both ShellCheck and ripgrep explicitly.
 
 ## Evidence
 - path:VERSION
@@ -67,6 +67,7 @@ Release, validation, CI, and public README contract for the macOS/Ubuntu bootstr
 - path:.github/workflows/ci.yml
 - path:.github/workflows/release.yml
 - commit:911265b
+- commit:0ec6ec6
 
 ## Do Not Infer
 - Do not infer a successful live GitHub Actions run or release publication from local files. Check GitHub Actions and Releases before claiming live release readiness.
