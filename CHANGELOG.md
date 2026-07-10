@@ -5,6 +5,12 @@ All notable changes to this module will be documented in this file.
 ## [Unreleased]
 
 
+## [0.3.10] - 2026-07-10
+
+### Fixed
+
+- Launch Codex through the frozen platform-native binary and isolate package-manager update provenance.
+
 ## [0.3.9] - 2026-07-10
 
 ### Fixed
