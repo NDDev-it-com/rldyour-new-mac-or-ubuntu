@@ -4,6 +4,17 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-10
+
+### Fixed
+
+- Provision ripgrep explicitly in hosted validation and release jobs so the
+  repository-local fail-closed validator has the same prerequisites as local
+  development.
+- Replace the obsolete streamed Antigravity-installer CI assertion with checks
+  for frozen AI manifest parity, generation-pinned artifacts, and SHA-512 trust
+  roots.
+
 ## [0.3.0] - 2026-07-10
 
 ### Added

@@ -46,14 +46,14 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Prepare shellcheck
+      - name: Prepare validation tools
         run: |
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
             brew update
-            brew install shellcheck
+            brew install shellcheck ripgrep
           else
             sudo apt-get update
-            sudo apt-get install -y shellcheck
+            sudo apt-get install -y --no-install-recommends shellcheck ripgrep
           fi
 
       - name: Lint bootstrap scripts
@@ -78,17 +78,17 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Prepare shellcheck
+      - name: Prepare validation tools
         if: github.event_name != 'workflow_dispatch' || inputs.platform == 'both' || inputs.platform == matrix.platform
         run: |
           case "${{ matrix.os }}" in
             macos*) 
               brew update
-              brew install shellcheck
+              brew install shellcheck ripgrep
               ;;
             *)
               sudo apt-get update
-              sudo apt-get install -y shellcheck
+              sudo apt-get install -y --no-install-recommends shellcheck ripgrep
               ;;
           esac
 

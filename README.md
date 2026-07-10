@@ -5,7 +5,7 @@ Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 
 ## Current Contract
 
-The adapter contract version is `0.3.0`.
+The adapter contract version is `0.3.1`.
 
 - **macOS Apple Silicon:** desktop, GUI or no GUI, Docker `none`, source/LSP
   only.

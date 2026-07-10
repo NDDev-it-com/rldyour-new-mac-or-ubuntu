@@ -34,6 +34,7 @@ jobs:
 
           python3 - <<'PY'
           import ast
+          import json
           from pathlib import Path
 
           files = [
@@ -73,11 +74,24 @@ jobs:
               if len(set(pins)) != 1:
                   raise SystemExit(f"{package} pin mismatch between install profiles: {pins}")
 
-          marker = "antigravity.google/cli/install.sh"
+          manifest = json.loads(Path("templates/ai-cli/package.json").read_text(encoding="utf-8"))
+          dependencies = manifest.get("dependencies", {})
+          for var, package in variable_matrix:
+              if dependencies.get(package) != values[var][0]:
+                  raise SystemExit(
+                      f"{package} lock-manifest pin mismatch: "
+                      f"{dependencies.get(package)!r} != {values[var][0]!r}"
+                  )
+
+          streamed_installer = "antigravity.google/cli/install.sh"
           for path in files:
               data = path.read_text(encoding="utf-8")
-              if marker not in data:
-                  raise SystemExit(f"{marker} missing in {path}")
+              if streamed_installer in data:
+                  raise SystemExit(f"streamed Antigravity installer is forbidden in {path}")
+              if "install_antigravity_artifact" not in data:
+                  raise SystemExit(f"verified Antigravity artifact installer missing in {path}")
+              if "ANTIGRAVITY_ARTIFACT_SHA512" not in data:
+                  raise SystemExit(f"Antigravity SHA-512 trust root missing in {path}")
 
           print("dependency manifest pins are aligned:")
           for var, package in variable_matrix:

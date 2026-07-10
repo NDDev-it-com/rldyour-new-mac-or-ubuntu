@@ -79,7 +79,7 @@ def test_invalid_profile_combinations_fail_closed() -> None:
 def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
-    assert contract["adapter"]["version"] == file("VERSION").strip() == "0.3.0"
+    assert contract["adapter"]["version"] == file("VERSION").strip() == "0.3.1"
     assert contract["targets"]["macos"]["architectures"] == ["arm64"]
     assert contract["targets"]["ubuntu"]["releases"] == ["24.04", "26.04"]
     assert contract["targets"]["ubuntu"]["profiles"]["server"]["default_docker_mode"] == "rootful"
@@ -776,6 +776,24 @@ def test_reusable_ci_is_pinned_to_current_ci_workflows_release() -> None:
             found += 1
             assert sha == expected, f"{workflow.name} has stale central CI pin {sha}"
     assert found >= 8
+
+
+def test_hosted_validation_provisions_local_validator_prerequisites() -> None:
+    for workflow in (
+        ".github/workflows/ci.yml",
+        ".github/workflows/validate.yml",
+        ".github/workflows/release.yml",
+    ):
+        body = file(workflow)
+        assert "ripgrep" in body, f"{workflow} must provision rg explicitly"
+
+
+def test_dependency_check_enforces_frozen_ai_and_antigravity_channels() -> None:
+    workflow = file(".github/workflows/dependency-check.yml")
+    assert "templates/ai-cli/package.json" in workflow
+    assert "streamed Antigravity installer is forbidden" in workflow
+    assert "ANTIGRAVITY_ARTIFACT_SHA512" in workflow
+    assert 'marker = "antigravity.google/cli/install.sh"' not in workflow
 
 
 def test_release_is_tag_only() -> None:
