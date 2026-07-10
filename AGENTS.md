@@ -26,7 +26,7 @@ When prose and implementation disagree, verify the scripts and contract, then
 update the affected documentation in the same change. Do not invent a second
 policy source.
 
-## Contract `0.3.8`
+## Contract `0.3.9`
 
 Ubuntu profile selection is always explicit. Never infer server/rootful Docker
 from `uname=Linux`; require `--profile desktop|server`.
@@ -87,8 +87,14 @@ bind the CDP listener beyond loopback. Use `scripts/verify-browser-runtime.sh`
 as the exact installed-runtime authority.
 
 Preserve unmanaged browser files and fail instead of adopting or replacing
-them. Runtime browser profiles, traces, caches, tokens, and service state must
-never be committed.
+them. The only adoption exception is the complete byte/shape-verified legacy
+rldyour CloakBrowser home, launcher pair, and service template. Its migration
+must snapshot the home, all six browser wrappers, and active service state;
+failed handoff must restore them transactionally. Browser Node staging must
+remove group/world-write bits before publication and rebuild an already unsafe
+managed runtime from the frozen lock while preserving the rejected tree.
+Runtime browser profiles, traces, caches, tokens, and service state must never
+be committed.
 
 ## GUI And Integrity Boundaries
 
@@ -96,6 +102,10 @@ never be committed.
 - Ubuntu GUI: Claude Desktop; ChatGPT, Codex, and cmux have no supported Linux
   builds.
 - Ubuntu server: no GUI applications.
+
+macOS GUI apply configures cmux non-interactively only for Codex, OpenCode, and
+Antigravity. Do not replace those targeted `--yes` installs with broad
+interactive `cmux hooks setup`, which can create unrelated agent configs.
 
 ZCode `3.3.3` remains manual by default because upstream publishes no checksum
 or signature manifest. On Ubuntu, installation is allowed only when the owner

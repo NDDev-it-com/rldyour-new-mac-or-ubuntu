@@ -1,6 +1,6 @@
 # Installation And Target Matrix
 
-This guide describes adapter contract `0.3.8`. Use `scripts/bootstrap.sh` as the
+This guide describes adapter contract `0.3.9`. Use `scripts/bootstrap.sh` as the
 public entry point so platform, profile, GUI, Docker, browser, safety, and
 verification settings are composed consistently.
 

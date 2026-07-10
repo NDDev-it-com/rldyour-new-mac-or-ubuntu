@@ -10,7 +10,7 @@ Maintain one plan-first bootstrap adapter for:
 
 The public entry point is `scripts/bootstrap.sh`. Treat
 `config/rldyour-contract.json`, the platform installers, verification scripts,
-and tests as the executable contract. Current adapter version: `0.3.8`.
+and tests as the executable contract. Current adapter version: `0.3.9`.
 
 ## Composition Invariants
 
@@ -67,7 +67,12 @@ Fail closed on missing or unhealthy browser state. Do not add or document:
 - a non-loopback CDP listener.
 
 Managed browser files use ownership markers. Preserve unmanaged files and fail
-instead of replacing them.
+instead of replacing them. The sole adoption exception is a complete exact
+match for the former rldyour CloakBrowser home, launcher pair, and service
+template; migrate it only through the rollback-safe home/wrapper/service
+transaction. Normalize Bun runtime permissions before publication, and rebuild
+unsafe managed Node trees from the frozen lock while retaining the rejected
+copy outside the active namespace.
 
 ## GUI And Authentication
 
@@ -75,6 +80,10 @@ instead of replacing them.
 - Ubuntu GUI mode: Claude Desktop. ChatGPT, Codex, and cmux have no supported
   Linux desktop build.
 - Server: no GUI layer.
+
+macOS GUI apply installs cmux hooks non-interactively only for Codex, OpenCode,
+and Antigravity. Keep the targeted `--yes` commands; do not use broad
+interactive `cmux hooks setup`.
 
 ZCode `3.3.3` is manual by default because upstream publishes no checksum or
 signature manifest. Ubuntu may install it only with a separately verified
