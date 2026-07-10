@@ -103,7 +103,7 @@ def test_contract_version_and_profile_matrix() -> None:
     contract = json.loads(file("config/rldyour-contract.json"))
     assert contract["schema_version"] == 2
     version = file("VERSION").strip()
-    assert contract["adapter"]["version"] == version == "0.3.6"
+    assert contract["adapter"]["version"] == version
     assert json.loads(file("templates/ai-cli/package.json"))["version"] == version
     assert json.loads(file("templates/browser/provider/package.json"))["version"] == version
     assert f'version = "{version}"' in file("templates/browser/cloakbrowser-pyproject.toml")
@@ -139,7 +139,7 @@ def test_ai_pins_match_both_installers_contract_and_docs() -> None:
         "codex": "0.144.1",
         "opencode": "1.17.18",
         "mimocode": "0.1.5",
-        "antigravity": "1.1.0",
+        "antigravity": "1.1.1",
     }
     for path in ("README.md", "AGENTS.md", ".claude/CLAUDE.md", "docs/install.md"):
         body = file(path)
@@ -355,7 +355,7 @@ printf '%s' "$CONTENT" | rldyour::_install_managed_browser_file "$2" "$3" 0755
 
 def test_antigravity_artifact_install_is_pinned_and_tamper_evident(tmp_path: Path) -> None:
     payload = tmp_path / "antigravity"
-    payload.write_text("#!/usr/bin/env bash\nprintf '1.1.0\\n'\n", encoding="utf-8")
+    payload.write_text("#!/usr/bin/env bash\nprintf '1.1.1\\n'\n", encoding="utf-8")
     payload.chmod(0o755)
     archive = tmp_path / "agy.tar.gz"
     with tarfile.open(archive, "w:gz") as bundle:
@@ -389,18 +389,18 @@ cp "$FAKE_ARCHIVE" "$destination"
 
     home = tmp_path / "home"
     home.mkdir()
-    interrupted = home / ".local/share/rldyour/antigravity/1.1.0"
+    interrupted = home / ".local/share/rldyour/antigravity/1.1.1"
     interrupted.mkdir(parents=True)
     (interrupted / "agy.sha256").write_text(
         "# Managed by rldyour-new-mac-or-ubuntu: antigravity-v1\n"
-        "version=1.1.0\n"
+        "version=1.1.1\n"
         f"sha256={hashlib.sha256(payload.read_bytes()).hexdigest()}\n",
         encoding="utf-8",
     )
     script = r'''
 source "$1"
 export RLDYOUR_DRY_RUN=0
-rldyour::install_antigravity_artifact 1.1.0 https://example.invalid/agy.tar.gz "$2"
+rldyour::install_antigravity_artifact 1.1.1 https://example.invalid/agy.tar.gz "$2"
 '''
     env = {
         **os.environ,
@@ -419,7 +419,7 @@ rldyour::install_antigravity_artifact 1.1.0 https://example.invalid/agy.tar.gz "
     assert result.returncode == 0, result.stderr + result.stdout
     launcher = home / ".local/bin/agy"
     assert "AGY_CLI_DISABLE_AUTO_UPDATE=true" in launcher.read_text(encoding="utf-8")
-    assert subprocess.check_output([launcher, "--version"], text=True).strip() == "1.1.0"
+    assert subprocess.check_output([launcher, "--version"], text=True).strip() == "1.1.1"
 
     # A fully valid managed installation must be a clean no-download rerun.
     second = subprocess.run(
@@ -430,9 +430,9 @@ rldyour::install_antigravity_artifact 1.1.0 https://example.invalid/agy.tar.gz "
         env=env,
     )
     assert second.returncode == 0, second.stderr + second.stdout
-    assert subprocess.check_output([launcher, "--version"], text=True).strip() == "1.1.0"
+    assert subprocess.check_output([launcher, "--version"], text=True).strip() == "1.1.1"
 
-    managed_binary = home / ".local/share/rldyour/antigravity/1.1.0/agy"
+    managed_binary = home / ".local/share/rldyour/antigravity/1.1.1/agy"
     managed_binary.write_bytes(managed_binary.read_bytes() + b"\n# tampered\n")
     tampered = subprocess.run(
         [launcher, "--version"],

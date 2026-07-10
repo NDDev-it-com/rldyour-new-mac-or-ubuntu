@@ -285,7 +285,7 @@ def test_native_artifact_installers_reject_unsafe_managed_paths_before_download(
         """,
     )
     namespace = home / f".local/share/rldyour/{tool}"
-    version = "1.1.0" if tool == "antigravity" else "0.43.0"
+    version = "1.1.1" if tool == "antigravity" else "0.43.0"
     binary_name = "agy" if tool == "antigravity" else "rtk"
     if unsafe_state == "namespace-symlink":
         namespace.parent.mkdir(parents=True)
@@ -297,7 +297,7 @@ def test_native_artifact_installers_reject_unsafe_managed_paths_before_download(
         version_dir.mkdir(parents=True)
         (version_dir / binary_name).symlink_to(tmp_path / "missing-unmanaged-target")
     command = (
-        "rldyour::install_antigravity_artifact 1.1.0 https://example.invalid/agy.tgz "
+        "rldyour::install_antigravity_artifact 1.1.1 https://example.invalid/agy.tgz "
         + "0" * 128
         if tool == "antigravity"
         else "rldyour::install_rtk"
