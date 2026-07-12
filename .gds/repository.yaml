@@ -39,6 +39,7 @@ verification:
   commands:
     test:
       - "bash scripts/ci/validate.sh"
+      - "python3 -m pytest"
   required:
     - "test"
 
