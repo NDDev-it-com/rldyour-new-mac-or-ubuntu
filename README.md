@@ -5,13 +5,13 @@ Plan-first bootstrap automation for Apple Silicon macOS desktops, Ubuntu
 
 ## Current Baseline
 
-The adapter contract version is `0.3.10`.
+The adapter contract version is `1.0.0`.
 
 | Field | Value |
 | --- | --- |
-| Adapter version | `0.3.10` |
+| Adapter version | `1.0.0` |
 | Runtime baseline | macOS arm64 and Ubuntu 24.04/26.04 amd64/arm64 |
-| GitHub release tag | `0.3.10` |
+| GitHub release tag | `1.0.0` |
 
 ## What This Repository Provides
 

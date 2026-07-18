@@ -4,14 +4,44 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-18
+
+First stable release. The module settles its name, reaches a stable adapter
+contract, and becomes a first-class GDS module.
+
 ### Changed
 
 - Rename the module and adapter identity from `new-mac-or-ubuntu` to
   `macos-ubuntu-bootstrap` across the GitHub repository, the adapter contract
-  id, generated GDS anchor, documentation, and managed drop-in markers. Old
-  repository URLs redirect automatically. Machines provisioned under the
-  previous marker keep their existing managed blocks until they are
-  re-provisioned under the new marker.
+  id, the generated GDS anchor, documentation, scripts, templates, tests, and
+  managed drop-in markers. Old repository URLs redirect automatically. Machines
+  provisioned under the previous marker keep their existing managed blocks
+  until they are re-provisioned under the new marker.
+
+### Added
+
+- Onboard the repository as a GDS-managed module: a schema-validated
+  `.gds/repository.yaml` anchor (role `module`, `git-submodule` consumption,
+  `github-release` publication) with a bundle-locked compiled policy, while
+  preserving the hand-authored `AGENTS.md` as the source of truth.
+- The GDS control plane consumes this module as a typed git-submodule, so a
+  device provisioned through GDS carries the bootstrap.
+
+### Stable baseline
+
+- Plan-first, idempotent bootstrap for Apple Silicon macOS desktops and Ubuntu
+  24.04/26.04 desktops and headless servers, with always-explicit profile
+  selection.
+- Integrity-pinned AI CLIs, a terminal-first shell (Starship prompt, an
+  agent-gated zsh, antidote/atuin/fzf-tab), source and LSP tooling, and a
+  hardened loopback-only CloakBrowser runtime with Chrome DevTools MCP and
+  Playwright CLI.
+- Owner shell files touched only through delimited, backed-up drop-ins; no
+  remote-stream-to-shell execution; fail-closed integrity and browser
+  boundaries.
+- CI wired to the pinned `nddev-ci-workflows` reusable suite: CodeQL, OSSF
+  Scorecard, dependency review, secret scan, cross-platform smoke, and
+  supply-chain release publication.
 
 ## [0.3.10] - 2026-07-10
 
