@@ -45,6 +45,7 @@ UV_SHA256_X64="04f8b82f5d47f0512dcd32c67a4a6f16a0ea27c81537c338fd0ad6b23cebe829"
 UV_SHA256_ARM64="94500fb064ae3c971a873cba64d94694c50677e0a4dbf78735c80509e7429919"
 BUN_VERSION="1.3.14"
 BUN_SHA256_X64="951ee2aee855f08595aeec6225226a298d3fea83a3dcd6465c09cbccdf7e848f"
+BUN_SHA256_X64_BASELINE="a063908ae08b7852ca10939bbdc6ceed3ddabce8fb9402dce83d65d73b36e6c7"
 BUN_SHA256_ARM64="a27ffb63a8310375836e0d6f668ae17fa8d8d18b88c37c821c65331973a19a3b"
 # Prompt/history/completion pillars — parity with the macOS brew baseline
 # (starship, atuin, carapace). Installed as pinned standalone artifacts, never
@@ -358,7 +359,15 @@ ensure_uv() {
 ensure_bun() {
   local arch sha archive stage destination url parent extract_dir
   case "$(uname -m)" in
-    x86_64|amd64) arch="x64"; sha="$BUN_SHA256_X64" ;;
+    x86_64|amd64)
+      # Standard Bun x64 requires AVX2; older CPUs need the baseline build.
+      if rldyour::cpu_has_avx2; then
+        arch="x64"; sha="$BUN_SHA256_X64"
+      else
+        arch="x64-baseline"; sha="$BUN_SHA256_X64_BASELINE"
+        rldyour::log "info" "AVX2 absent; selecting Bun ${BUN_VERSION} x64-baseline artifact"
+      fi
+      ;;
     aarch64|arm64) arch="aarch64"; sha="$BUN_SHA256_ARM64" ;;
     *) rldyour::log "error" "Bun ${BUN_VERSION} has no tracked artifact for $(uname -m)"; return 1 ;;
   esac

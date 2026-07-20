@@ -54,7 +54,10 @@ rldyour::ubuntu_verify::tool_host_provenance() {
   esac
   node_sha=$(rldyour::ubuntu_verify::contract_hash ubuntu_node_sha256 "$arch")
   uv_sha=$(rldyour::ubuntu_verify::contract_hash ubuntu_uv_sha256 "$arch")
-  bun_sha=$(rldyour::ubuntu_verify::contract_hash ubuntu_bun_sha256 "$arch")
+  # Bun x64 has an AVX2-gated baseline variant with its own tracked hash.
+  local bun_arch="$arch"
+  if [ "$arch" = "x64" ] && ! rldyour::cpu_has_avx2; then bun_arch="x64-baseline"; fi
+  bun_sha=$(rldyour::ubuntu_verify::contract_hash ubuntu_bun_sha256 "$bun_arch")
   node_root="$HOME/.local/share/rldyour/node/v24.18.0"
   uv_root="$HOME/.local/share/rldyour/uv/0.11.29"
   bun_root="$HOME/.local/share/rldyour/bun/1.3.14"

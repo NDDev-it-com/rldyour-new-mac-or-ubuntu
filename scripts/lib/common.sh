@@ -34,6 +34,13 @@ rldyour::sha256_file() {
   fi
 }
 
+# True when the current x86-64 CPU advertises AVX2. The standard Bun x64 build
+# requires AVX2; older CPUs must use the bun-linux-x64-baseline artifact or they
+# fail with SIGILL. Non-x86 architectures are not gated by this check.
+rldyour::cpu_has_avx2() {
+  grep -Eq '(^|[[:space:]])avx2([[:space:]]|$)' /proc/cpuinfo 2>/dev/null
+}
+
 rldyour::download_verified_file() {
   local url=$1
   local expected_sha256=$2
