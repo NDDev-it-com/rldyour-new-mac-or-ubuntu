@@ -36,19 +36,27 @@ zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$HOME/.zcompcache"
 zstyle ':completion:*' menu no            # fzf-tab replaces the menu
 
-# ── 4. Plugins via antidote (static file, see ~/.zsh_plugins.txt) ───────────
-for _anti in \
-  /opt/homebrew/opt/antidote/share/antidote/antidote.zsh \
-  /usr/local/opt/antidote/share/antidote/antidote.zsh \
-  /home/linuxbrew/.linuxbrew/opt/antidote/share/antidote/antidote.zsh \
-  "$HOME/.antidote/antidote.zsh"; do
-  if [[ -r $_anti ]]; then
-    source "$_anti"
-    antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
-    break
-  fi
-done
-unset _anti
+# ── 4. Plugins via antidote (offline static bundle) ─────────────────────────
+# The installer pre-clones every plugin at its pinned SHA and compiles
+# ~/.zsh_plugins.zsh; sourcing that compiled file is pure `source`/`fpath` with
+# zero network and no antidote runtime. `antidote load` is only the fallback for
+# a host where the static bundle was never materialized.
+if [[ -r "${ZDOTDIR:-$HOME}/.zsh_plugins.zsh" ]]; then
+  source "${ZDOTDIR:-$HOME}/.zsh_plugins.zsh"
+else
+  for _anti in \
+    /opt/homebrew/opt/antidote/share/antidote/antidote.zsh \
+    /usr/local/opt/antidote/share/antidote/antidote.zsh \
+    /home/linuxbrew/.linuxbrew/opt/antidote/share/antidote/antidote.zsh \
+    "$HOME/.antidote/antidote.zsh"; do
+    if [[ -r $_anti ]]; then
+      source "$_anti"
+      antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
+      break
+    fi
+  done
+  unset _anti
+fi
 
 # ── 5. Tool inits (zsh-defer, loaded via plugins, keeps prompt instant) ─────
 (( $+functions[zsh-defer] )) || zsh-defer() { "$@" }   # fallback: run inline

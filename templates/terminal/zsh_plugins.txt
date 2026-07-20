@@ -1,8 +1,12 @@
-# antidote manifest — order matters. `antidote load` compiles this into one
-# static file; regenerate after edits with: antidote bundle <this file.
-# Managed template: macos-ubuntu-bootstrap (templates/terminal/zsh_plugins.txt).
-romkatv/zsh-defer
-Aloxaf/fzf-tab
-zsh-users/zsh-completions kind:fpath
-zsh-users/zsh-autosuggestions
-zsh-users/zsh-syntax-highlighting   # must stay last
+# antidote manifest — order matters. The installer pre-clones every repo at the
+# pinned commit below and compiles this into one static file (~/.zsh_plugins.zsh)
+# that shell startup sources with zero network. Regenerate after edits with:
+# antidote bundle < this file. Managed template: macos-ubuntu-bootstrap
+# (templates/terminal/zsh_plugins.txt). Each `# pin <40-hex-sha>` is read by the
+# materializer (scripts/lib/common.sh) to checkout an exact, reproducible commit.
+romkatv/zsh-defer  # pin 53a26e287fbbe2dcebb3aa1801546c6de32416fa
+Aloxaf/fzf-tab  # pin 24105b15714bfec37989ed5c5b6e60f572253019
+zsh-users/zsh-completions kind:fpath  # pin 9903bae60284072de3fa0e3e20965f22368c5694
+zsh-users/zsh-autosuggestions  # pin 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
+olets/zsh-abbr  # pin 889f4772c12b9dbe4965bbd56f2572af0a28fa3b
+zsh-users/zsh-syntax-highlighting  # pin 1d85c692615a25fe2293bdd44b34c217d5d2bf04 must stay last
