@@ -4,6 +4,23 @@ All notable changes to this module will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **uv/bun are the only package managers.** Remove `python3-pip` from the apt
+  baseline; publish only the managed `node` launcher (npm/npx/corepack no longer
+  on PATH); pin uv/bun source tools; bump uv to 0.11.29.
+- **Server profile is `container-execution-only`** (was `server-build-runtime`):
+  no host `build-essential`/`pkg-config`; project builds/tests run in Docker.
+- **One owner per harness (breaking):** remove the inline Claude Code, OpenCode,
+  MiMoCode, Antigravity, and raw ZCode installers; delegate codex and zcode to
+  the `nddev-codex-app` / `nddev-zcode-app` modules via `RLDYOUR_CODEX_MODULE` /
+  `RLDYOUR_ZCODE_MODULE`.
+- **Zsh runtime completed:** SHA-pinned antidote plugins + `zsh-abbr`, offline
+  static bundle materialization, starship/atuin/carapace pinned standalone
+  artifacts (macOS-parity), opt-in reversible login shell; drop the `mise` shim.
+- Bun selects the `x64-baseline` artifact on non-AVX2 CPUs.
+- `~/.zshenv.secrets` is no longer sourced by every zsh (agent/secret isolation).
+
 ## [1.0.0] - 2026-07-18
 
 First stable release. The module settles its name, reaches a stable adapter
