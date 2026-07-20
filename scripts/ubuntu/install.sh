@@ -23,6 +23,8 @@ LOCAL_EXECUTION_POLICY="${RLDYOUR_LOCAL_EXECUTION_POLICY:-container-execution-on
 HARDEN_SSH="${RLDYOUR_HARDEN_SSH:-0}"
 ENABLE_UFW="${RLDYOUR_ENABLE_UFW:-0}"
 WITH_FAIL2BAN="${RLDYOUR_WITH_FAIL2BAN:-0}"
+# Login shell change is explicit opt-in only; never mutated silently.
+SET_LOGIN_SHELL="${RLDYOUR_SET_LOGIN_SHELL:-0}"
 
 CLAUDE_CODE_VERSION="2.1.206"
 CODEX_VERSION="0.144.1"
@@ -44,6 +46,19 @@ UV_SHA256_ARM64="94500fb064ae3c971a873cba64d94694c50677e0a4dbf78735c80509e742991
 BUN_VERSION="1.3.14"
 BUN_SHA256_X64="951ee2aee855f08595aeec6225226a298d3fea83a3dcd6465c09cbccdf7e848f"
 BUN_SHA256_ARM64="a27ffb63a8310375836e0d6f668ae17fa8d8d18b88c37c821c65331973a19a3b"
+# Prompt/history/completion pillars — parity with the macOS brew baseline
+# (starship, atuin, carapace). Installed as pinned standalone artifacts, never
+# via apt (stale) or a piped install script. Linux x64 + arm64 tarball SHA-256
+# from each project's signed GitHub release checksum files.
+STARSHIP_VERSION="1.26.0"
+STARSHIP_SHA256_X64="321f0dd7af8340a5f2e6a8fec6538a04f617486f9ec70d878f91c09cd8deef22"
+STARSHIP_SHA256_ARM64="dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b"
+ATUIN_VERSION="18.17.1"
+ATUIN_SHA256_X64="72395cf7ae86b3698c04ba4a331773e7c4f027630bfd2b522bb14d4c80cb2410"
+ATUIN_SHA256_ARM64="9412210a9cdd6d0ff7635693e940096d82b368628326d334d27a8ca0ba173b0f"
+CARAPACE_VERSION="1.7.3"
+CARAPACE_SHA256_X64="35ab52bfe7bdd8296d90c3687660bde80497599badde840ab615d2f421f5f053"
+CARAPACE_SHA256_ARM64="b2456cb09d77004db87de2567d6d7588a61ceb4724522c463e2b1c1f87b4d4b9"
 
 APT_SOURCE_PACKAGES=(
   ca-certificates curl gpg gnupg git jq python3 python3-venv
@@ -389,6 +404,142 @@ ensure_bun() {
   [ "$("$HOME/.local/bin/bun" --version)" = "$BUN_VERSION" ]
 }
 
+# Shared installer for a single pinned, content-addressed standalone binary
+# (starship/atuin/carapace). Mirrors ensure_uv/ensure_bun: download the tracked
+# SHA-256 tarball, stage it, verify the reported version, write a runtime
+# receipt, and publish exactly one managed PATH link. External PATH binaries are
+# preserved but never trusted; an unmanaged/tampered destination is fail-closed.
+rldyour::ubuntu::ensure_standalone_tool() {
+  local name=$1 version=$2 url=$3 sha=$4 strip=$5 binrel=$6
+  local destination parent archive stage namespace
+  namespace="$HOME/.local/share/rldyour/${name}"
+  destination="${namespace}/${version}"
+  parent="$(dirname "$destination")"
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] verify or install managed ${name} ${version} from the tracked SHA-256 artifact; external PATH binaries are not trusted"
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin" "$parent"
+  if [ -e "$destination" ] || [ -L "$destination" ]; then
+    if ! rldyour::ubuntu::validate_runtime_receipt \
+      "$destination" "$name" "$version" "$sha" "$binrel" ||
+      ! "$destination/$binrel" --version 2>/dev/null | grep -Fq "$version"; then
+      rldyour::log "error" "unmanaged or tampered ${name} destination exists; preserved: $destination"
+      return 1
+    fi
+  else
+    archive="$(mktemp)"; stage="$(mktemp -d "$parent/.${name}-${version}.tmp.XXXXXX")"
+    trap 'rm -rf "$archive"; [ -z "${stage:-}" ] || rm -rf "$stage"' RETURN
+    rldyour::download_verified_file "$url" "$sha" "$archive" || return 1
+    tar -xzf "$archive" --strip-components="$strip" -C "$stage"
+    [ -x "$stage/$binrel" ] || {
+      rldyour::log "error" "staged ${name} artifact is missing ${binrel}"
+      return 1
+    }
+    "$stage/$binrel" --version 2>/dev/null | grep -Fq "$version" || {
+      rldyour::log "error" "staged ${name} artifact did not report ${version}"
+      return 1
+    }
+    rldyour::ubuntu::write_runtime_receipt "$stage" "$name" "$version" "$sha" "$binrel" || return 1
+    mv "$stage" "$destination"
+    stage=""
+    rm -f "$archive"
+    trap - RETURN
+  fi
+  rldyour::ubuntu::preflight_managed_link "$name" "$namespace"
+  ensure_managed_tool_link "$name" "$destination/$binrel" "$namespace"
+  "$HOME/.local/bin/$name" --version 2>/dev/null | grep -Fq "$version"
+}
+
+ensure_starship() {
+  rldyour::section "Ensure Starship ${STARSHIP_VERSION}"
+  local triple sha
+  case "$(uname -m)" in
+    x86_64|amd64) triple="x86_64-unknown-linux-gnu"; sha="$STARSHIP_SHA256_X64" ;;
+    aarch64|arm64) triple="aarch64-unknown-linux-musl"; sha="$STARSHIP_SHA256_ARM64" ;;
+    *) rldyour::log "error" "Starship ${STARSHIP_VERSION} has no tracked artifact for $(uname -m)"; return 1 ;;
+  esac
+  rldyour::ubuntu::ensure_standalone_tool starship "$STARSHIP_VERSION" \
+    "https://github.com/starship/starship/releases/download/v${STARSHIP_VERSION}/starship-${triple}.tar.gz" \
+    "$sha" 0 starship
+}
+
+ensure_atuin() {
+  rldyour::section "Ensure Atuin ${ATUIN_VERSION}"
+  local triple sha
+  case "$(uname -m)" in
+    x86_64|amd64) triple="x86_64-unknown-linux-gnu"; sha="$ATUIN_SHA256_X64" ;;
+    aarch64|arm64) triple="aarch64-unknown-linux-gnu"; sha="$ATUIN_SHA256_ARM64" ;;
+    *) rldyour::log "error" "Atuin ${ATUIN_VERSION} has no tracked artifact for $(uname -m)"; return 1 ;;
+  esac
+  # atuin tarballs nest the binary under atuin-<triple>/; strip that leading dir.
+  rldyour::ubuntu::ensure_standalone_tool atuin "$ATUIN_VERSION" \
+    "https://github.com/atuinsh/atuin/releases/download/v${ATUIN_VERSION}/atuin-${triple}.tar.gz" \
+    "$sha" 1 atuin
+}
+
+ensure_carapace() {
+  rldyour::section "Ensure Carapace ${CARAPACE_VERSION}"
+  local arch sha
+  case "$(uname -m)" in
+    x86_64|amd64) arch="amd64"; sha="$CARAPACE_SHA256_X64" ;;
+    aarch64|arm64) arch="arm64"; sha="$CARAPACE_SHA256_ARM64" ;;
+    *) rldyour::log "error" "Carapace ${CARAPACE_VERSION} has no tracked artifact for $(uname -m)"; return 1 ;;
+  esac
+  rldyour::ubuntu::ensure_standalone_tool carapace "$CARAPACE_VERSION" \
+    "https://github.com/carapace-sh/carapace-bin/releases/download/v${CARAPACE_VERSION}/carapace-bin_${CARAPACE_VERSION}_linux_${arch}.tar.gz" \
+    "$sha" 0 carapace
+}
+
+# Optional, explicit-opt-in, reversible login-shell change. OFF by default; only
+# runs when RLDYOUR_SET_LOGIN_SHELL=1. Ensures the real zsh binary is listed in
+# /etc/shells, records the prior login shell for rollback, then chsh the owner.
+ensure_login_shell() {
+  [ "$SET_LOGIN_SHELL" -eq 1 ] || {
+    rldyour::log "info" "login shell change disabled (set RLDYOUR_SET_LOGIN_SHELL=1 to opt in)"
+    return 0
+  }
+  rldyour::section "Set zsh as the login shell (opt-in)"
+  local zsh_bin owner prev_file current
+  zsh_bin="$(command -v zsh 2>/dev/null || true)"
+  [ -n "$zsh_bin" ] || {
+    rldyour::log "error" "zsh not found; cannot set the login shell"
+    return 1
+  }
+  # Refuse anything but a real, root-owned system zsh (never a $HOME shim).
+  case "$zsh_bin" in
+    /usr/bin/zsh|/bin/zsh|/usr/local/bin/zsh) ;;
+    *)
+      rldyour::log "error" "refusing to set an unexpected zsh path as login shell: $zsh_bin"
+      return 1
+      ;;
+  esac
+  owner="$(id -un)"
+  prev_file="$HOME/.config/rldyour/previous-login-shell"
+  if [ "$RLDYOUR_DRY_RUN" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] ensure ${zsh_bin} is in /etc/shells, record the prior login shell to ${prev_file}, then chsh -s ${zsh_bin} ${owner}"
+    return 0
+  fi
+  if ! grep -Fxq "$zsh_bin" /etc/shells 2>/dev/null; then
+    printf '%s\n' "$zsh_bin" | rldyour::ubuntu::as_root tee -a /etc/shells >/dev/null
+  fi
+  current="$(getent passwd "$owner" | awk -F: '{ print $7 }')"
+  if [ "$current" = "$zsh_bin" ]; then
+    rldyour::log "ok" "login shell already ${zsh_bin}"
+    return 0
+  fi
+  mkdir -p "$(dirname "$prev_file")"
+  if [ ! -f "$prev_file" ]; then
+    printf '%s\n' "$current" >"$prev_file"
+    chmod 0600 "$prev_file"
+  fi
+  rldyour::ubuntu::as_root chsh -s "$zsh_bin" "$owner" || {
+    rldyour::log "error" "chsh failed; login shell unchanged"
+    return 1
+  }
+  rldyour::log "ok" "login shell set to ${zsh_bin}; rollback: chsh -s \"\$(cat ${prev_file})\" ${owner}"
+}
+
 install_python_source_tools() {
   rldyour::section "Install isolated Python source-analysis tools"
   local package
@@ -599,11 +750,15 @@ if [ "$SKIP_SYSTEM" -eq 0 ]; then
   ensure_node
   ensure_uv
   ensure_bun
+  ensure_starship
+  ensure_atuin
+  ensure_carapace
   rldyour::ensure_path
   install_python_source_tools
   rldyour::ensure_git_perf
   rldyour::ensure_git_delta_config
   rldyour::install_terminal_configs "$REPO_ROOT/templates/terminal"
+  ensure_login_shell
 else
   rldyour::log "warn" "system layer skipped by explicit recovery flag"
 fi

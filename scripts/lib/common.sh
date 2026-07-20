@@ -3494,6 +3494,139 @@ PY
   rldyour::log "ok" "fresh zsh login environment uses managed PATH, browser, and updater policy"
 }
 
+# Clone (or re-point) a git repository to an EXACT pinned commit at a managed
+# path. Idempotent: an already-pinned clean checkout is a no-op and never
+# re-clones; a non-git path at the destination is fail-closed and preserved.
+rldyour::_ensure_pinned_git_checkout() {
+  local url=$1 sha=$2 dir=$3 head
+  if [ -e "$dir" ] || [ -L "$dir" ]; then
+    if [ -L "$dir" ] || [ ! -d "$dir/.git" ]; then
+      rldyour::log "error" "unmanaged non-git path at pinned clone dir; preserved: ${dir}"
+      return 1
+    fi
+    head="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+    if [ "$head" = "$sha" ]; then
+      return 0
+    fi
+    git -C "$dir" fetch --quiet --tags origin || {
+      rldyour::log "error" "failed to fetch pinned updates for ${dir}"
+      return 1
+    }
+    git -C "$dir" checkout --quiet --detach "$sha" || {
+      rldyour::log "error" "pinned commit ${sha} not found in ${dir}"
+      return 1
+    }
+  else
+    mkdir -p "${dir%/*}" || return 1
+    git clone --quiet "$url" "$dir" || {
+      rldyour::log "error" "failed to clone ${url}"
+      return 1
+    }
+    git -C "$dir" checkout --quiet --detach "$sha" || {
+      rldyour::log "error" "pinned commit ${sha} not found after cloning ${url}"
+      return 1
+    }
+  fi
+}
+
+# Materialize an OFFLINE antidote plugin bundle shared by macOS and Ubuntu:
+# ensure antidote is present, pre-clone every plugin at its pinned SHA into
+# antidote's clone home, then compile the static ~/.zsh_plugins.zsh that shell
+# startup sources with zero network. Idempotent: a second run re-verifies pinned
+# SHAs and never re-clones a clean, already-pinned repo.
+rldyour::materialize_zsh_plugins() {
+  local manifest="$HOME/.zsh_plugins.txt"
+  # getantidote/antidote pinned commit for the plain-Ubuntu clone path.
+  local antidote_pin="4913257e0ae3fee2a77e7189e526fe55b6ff9536"
+  local antidote_home="${XDG_CACHE_HOME:-$HOME/.cache}/antidote"
+  local antidote_zsh="" candidate line repo sha dir bundle tmp
+  local -a antidote_candidates=(
+    /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
+    /usr/local/opt/antidote/share/antidote/antidote.zsh
+    /home/linuxbrew/.linuxbrew/opt/antidote/share/antidote/antidote.zsh
+    "$HOME/.antidote/antidote.zsh"
+  )
+
+  rldyour::section "Materialize offline antidote plugin bundle"
+
+  if [ "${RLDYOUR_DRY_RUN:-1}" -eq 1 ]; then
+    rldyour::log "info" "[DRY-RUN] ensure antidote (brew, else git clone getantidote/antidote@${antidote_pin} to \$HOME/.antidote), pre-clone every pinned plugin from ${manifest} into ${antidote_home}, then compile \$HOME/.zsh_plugins.zsh"
+    return 0
+  fi
+
+  command -v git >/dev/null 2>&1 || {
+    rldyour::log "error" "git is required to materialize the antidote plugin bundle"
+    return 1
+  }
+  command -v zsh >/dev/null 2>&1 || {
+    rldyour::log "error" "zsh is required to compile the antidote plugin bundle"
+    return 1
+  }
+  [ -r "$manifest" ] || {
+    rldyour::log "error" "plugin manifest is missing: ${manifest}"
+    return 1
+  }
+
+  # 1. Ensure antidote.zsh is available: brew provides it on macOS/linuxbrew;
+  #    otherwise clone getantidote/antidote at the pinned SHA to $HOME/.antidote,
+  #    matching the path templates/terminal/zshrc already probes.
+  for candidate in "${antidote_candidates[@]}"; do
+    if [ -r "$candidate" ]; then
+      antidote_zsh="$candidate"
+      break
+    fi
+  done
+  if [ -z "$antidote_zsh" ]; then
+    rldyour::_ensure_pinned_git_checkout \
+      "https://github.com/getantidote/antidote" "$antidote_pin" "$HOME/.antidote" || return 1
+    antidote_zsh="$HOME/.antidote/antidote.zsh"
+    [ -r "$antidote_zsh" ] || {
+      rldyour::log "error" "antidote clone did not provide antidote.zsh: ${antidote_zsh}"
+      return 1
+    }
+  fi
+
+  # 2. Pre-clone every plugin at its pinned SHA into antidote's full-style clone
+  #    home ($ANTIDOTE_HOME/github.com/<owner>/<repo>) so neither bundling nor
+  #    shell startup ever reaches the network.
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|\#*) continue ;; esac
+    repo="${line%%[[:space:]]*}"
+    case "$repo" in */*) ;; *) continue ;; esac
+    sha=""
+    if [[ "$line" =~ pin[[:space:]]+([0-9a-f]{40}) ]]; then
+      sha="${BASH_REMATCH[1]}"
+    fi
+    [ -n "$sha" ] || {
+      rldyour::log "error" "plugin ${repo} has no pinned SHA in ${manifest}"
+      return 1
+    }
+    dir="$antidote_home/github.com/$repo"
+    rldyour::_ensure_pinned_git_checkout "https://github.com/$repo" "$sha" "$dir" || return 1
+  done < "$manifest"
+
+  # 3. Compile the static bundle. Every clone is present at its pinned SHA, so
+  #    antidote sources them by path and never clones — the output is pure
+  #    `source`/`fpath` lines that shell startup runs offline.
+  bundle="$HOME/.zsh_plugins.zsh"
+  tmp="$(mktemp "${bundle}.tmp.XXXXXX")" || return 1
+  if ! ANTIDOTE_HOME="$antidote_home" \
+      zsh -fc 'source "$1"; antidote bundle' antidote-bundle "$antidote_zsh" \
+      < "$manifest" > "$tmp"; then
+    rm -f "$tmp"
+    rldyour::log "error" "antidote failed to compile the static plugin bundle"
+    return 1
+  fi
+  [ -s "$tmp" ] || {
+    rm -f "$tmp"
+    rldyour::log "error" "compiled antidote bundle is empty"
+    return 1
+  }
+  mv -f "$tmp" "$bundle" || { rm -f "$tmp"; return 1; }
+  chmod 0644 "$bundle" 2>/dev/null || true
+  rldyour::log "ok" "compiled offline antidote plugin bundle: ${bundle}"
+}
+
 rldyour::install_terminal_configs() {
   local tpl_dir="$1"
   rldyour::section "Install terminal shell configs (zsh-first, agent-gated)"
@@ -3512,4 +3645,5 @@ rldyour::install_terminal_configs() {
   rldyour::install_config_template "$tpl_dir/zshrc"           "$HOME/.zshrc"
   rldyour::install_config_template "$tpl_dir/zsh_plugins.txt" "$HOME/.zsh_plugins.txt"
   rldyour::install_config_template "$tpl_dir/starship.toml"   "$HOME/.config/starship.toml"
+  rldyour::materialize_zsh_plugins
 }
