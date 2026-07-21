@@ -823,12 +823,12 @@ def test_no_gui_mode_is_distinct_from_server_role() -> None:
 
 
 def test_reusable_ci_is_pinned_to_current_ci_workflows_release() -> None:
-    expected = "ac4d1f469f5974741c7449305ffcbd5f05a5a47f"
+    expected = "2ccb80e96f5771b6a6b4eae63a4f47e232906dc7"
     found = 0
     for workflow in (ROOT / ".github" / "workflows").glob("*.yml"):
         body = workflow.read_text(encoding="utf-8")
         for sha in re.findall(
-            r"NDDev-it-com/nddev-ci-workflows/[^@\s]+@([0-9a-f]{40})", body
+            r"NDDev-it-com/ci-workflows/[^@\s]+@([0-9a-f]{40})", body
         ):
             found += 1
             assert sha == expected, f"{workflow.name} has stale central CI pin {sha}"
