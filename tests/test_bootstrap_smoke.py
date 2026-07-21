@@ -532,6 +532,17 @@ def test_browser_commands_are_required_in_verifiers() -> None:
     assert "managed_link" in ubuntu_verify
 
 
+def test_macos_runtime_pillars_have_version_floors() -> None:
+    # macOS provisions these via mutable Homebrew, so it cannot carry an exact
+    # receipt like the Ubuntu standalone path. It must at least fail closed on
+    # gross drift with a conservative version floor, not a silent presence check.
+    verify = file("scripts/macos/verify.sh")
+    for tool in ("uv", "bun", "starship", "atuin", "carapace"):
+        assert re.search(
+            rf"require_cmd_min_version {tool} ", verify
+        ), f"macOS verify must floor-check {tool}"
+
+
 def test_remote_code_is_never_piped_directly_to_shell() -> None:
     for path in (ROOT / "scripts").rglob("*.sh"):
         body = path.read_text(encoding="utf-8")
