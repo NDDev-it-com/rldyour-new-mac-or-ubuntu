@@ -1,0 +1,31 @@
+name: Docs quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: docs-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-quality:
+    name: Docs quality
+    permissions:
+      contents: read
+    uses: NDDev-it-com/ci-workflows/.github/workflows/docs-quality.yml@2ccb80e96f5771b6a6b4eae63a4f47e232906dc7 # 0.12.0
+    with:
+      # Broken-link detection (lychee). Exclude openai.com: its marketing pages
+      # return 403 to link-checkers (bot-blocked) — a false positive, valid in a
+      # browser.
+      lychee_args: '--no-progress --max-concurrency 8 --exclude "openai\.com" "**/*.md"'
+      # Spell-check and markdown-lint are disabled: `typos` scans the whole repo
+      # and flags project identifiers as misspellings (the NDDev brand, hex
+      # SHA-256 fragments), and default markdownlint rules (e.g. line length) are
+      # noise on technical docs. Keep the high-signal broken-link gate.
+      typos: false
+      markdownlint: false

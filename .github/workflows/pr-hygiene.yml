@@ -1,0 +1,19 @@
+name: PR hygiene
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: pr-hygiene-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-hygiene:
+    name: PR hygiene
+    permissions:
+      contents: read
+    uses: NDDev-it-com/ci-workflows/.github/workflows/pr-hygiene.yml@2ccb80e96f5771b6a6b4eae63a4f47e232906dc7 # 0.12.0
