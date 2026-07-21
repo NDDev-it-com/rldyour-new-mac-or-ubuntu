@@ -74,20 +74,25 @@ APT_CLOAK_RUNTIME_PACKAGES=(
   fonts-wqy-zenhei fonts-tlwg-loma-otf
 )
 
+# Registry-backed language servers + source checks, pinned to exact versions
+# for reproducibility (RVR-P2-003). Two package identities are corrected here:
+# `biome` (an unrelated squatter package) -> `@biomejs/biome` (the Biome
+# linter), and `@ansible/language-server` (does not exist on npm) ->
+# `@ansible/ansible-language-server` (the real Ansible language server).
 BUN_LSP_PACKAGES=(
-  typescript
-  "@vtsls/language-server"
-  yaml-language-server
-  bash-language-server
-  dockerfile-language-server-nodejs
-  vscode-langservers-extracted
-  "@taplo/cli"
-  gh-actions-language-server
-  biome
-  oxlint
-  markdownlint-cli2
-  prettier
-  "@ansible/language-server"
+  "typescript@7.0.2"
+  "@vtsls/language-server@0.3.0"
+  "yaml-language-server@1.24.0"
+  "bash-language-server@5.6.0"
+  "dockerfile-language-server-nodejs@0.15.0"
+  "vscode-langservers-extracted@4.10.0"
+  "@taplo/cli@0.7.0"
+  "gh-actions-language-server@0.0.3"
+  "@biomejs/biome@2.5.4"
+  "oxlint@1.74.0"
+  "markdownlint-cli2@0.23.1"
+  "prettier@3.9.6"
+  "@ansible/ansible-language-server@26.6.0"
 )
 
 # Isolated Python source-analysis tools, pinned to exact versions so a device
@@ -570,12 +575,16 @@ install_python_source_tools() {
 
 install_bun_lsps() {
   rldyour::section "Install registry-backed language servers and source checks"
-  local package
-  for package in "${BUN_LSP_PACKAGES[@]}"; do
-    if bun pm ls -g 2>/dev/null | grep -Fq "${package}@"; then
-      rldyour::log "ok" "preserving installed Bun source tool: ${package}"
+  local entry name version
+  for entry in "${BUN_LSP_PACKAGES[@]}"; do
+    name="${entry%@*}"
+    version="${entry##*@}"
+    # Reproducible: skip only when the EXACT pinned version is already installed;
+    # otherwise install the pin so a stale/divergent version is corrected.
+    if bun pm ls -g 2>/dev/null | grep -Fq "${name}@${version}"; then
+      rldyour::log "ok" "pinned Bun source tool present: ${entry}"
     else
-      rldyour::run bun add -g --ignore-scripts "$package"
+      rldyour::run bun add -g --ignore-scripts "$entry"
     fi
   done
 }
