@@ -64,11 +64,15 @@
     "codex": {
       "owner_module": "nddev-codex-app",
       "module_path_env": "RLDYOUR_CODEX_MODULE",
+      "module_repo": "https://github.com/NDDev-it-com/nddev-codex-app.git",
+      "module_commit": "dc6db7522fd0bbaa87312a9345bc28ac6daeb0ea",
       "default_setup": "safe"
     },
     "zcode": {
       "owner_module": "nddev-zcode-app",
       "module_path_env": "RLDYOUR_ZCODE_MODULE",
+      "module_repo": "https://github.com/NDDev-it-com/nddev-zcode-app.git",
+      "module_commit": "66f763926f85069ce73e223348610ed4e3bfcabf",
       "default_setup": "nddev-builder"
     }
   },

@@ -149,6 +149,10 @@ def test_active_harness_set_is_only_codex_and_zcode() -> None:
     assert harnesses["active"] == ["codex", "zcode"]
     assert harnesses["codex"]["module_path_env"] == "RLDYOUR_CODEX_MODULE"
     assert harnesses["zcode"]["module_path_env"] == "RLDYOUR_ZCODE_MODULE"
+    assert harnesses["codex"]["module_repo"].endswith("nddev-codex-app.git")
+    assert harnesses["zcode"]["module_repo"].endswith("nddev-zcode-app.git")
+    assert len(harnesses["codex"]["module_commit"]) == 40
+    assert len(harnesses["zcode"]["module_commit"]) == 40
 
     installers = (file("scripts/macos/install.sh"), file("scripts/ubuntu/install.sh"))
     removed_constants = (
@@ -196,8 +200,10 @@ def test_harness_delegation_wires_exact_module_commands() -> None:
     # ZCode module entrypoint and plan/apply lifecycle.
     assert 'entry="cli-tools/scripts/install.sh"' in common
     assert 'flag="--plan"' in common and 'flag="--apply"' in common
-    # Unset module path is a skip, not an error.
-    assert "skipping bootstrap-side delegation" in common
+    # Unset module path self-materializes the pinned public module (additive).
+    assert "self-materializing the pinned codex module" in common
+    assert "rldyour::_materialize_harness_module" in common
+    assert "rldyour::_ensure_pinned_git_checkout" in common
 
 
 def test_desktop_manifests_exclude_project_runtime_and_docker() -> None:
