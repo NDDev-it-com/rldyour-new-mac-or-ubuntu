@@ -41,13 +41,15 @@ BREW_SOURCE_PACKAGES=(
   gh lazygit yazi xh jaq jnv duckdb difftastic tmux
 )
 
+# Registry-backed language servers, pinned to exact versions for reproducibility
+# (RVR-P2-003). Kept in lockstep with the Ubuntu BUN_LSP_PACKAGES pins.
 BUN_LSP_PACKAGES=(
-  typescript
-  "@vtsls/language-server"
-  yaml-language-server
-  bash-language-server
-  dockerfile-language-server-nodejs
-  gh-actions-language-server
+  "typescript@7.0.2"
+  "@vtsls/language-server@0.3.0"
+  "yaml-language-server@1.24.0"
+  "bash-language-server@5.6.0"
+  "dockerfile-language-server-nodejs@0.15.0"
+  "gh-actions-language-server@0.0.3"
 )
 
 GUI_CASKS=(ghostty cmux chatgpt codex-app claude)
@@ -184,12 +186,16 @@ install_ai_runtimes() {
 
 install_bun_lsps() {
   rldyour::section "Install registry-backed language servers"
-  local package
-  for package in "${BUN_LSP_PACKAGES[@]}"; do
-    if bun pm ls -g 2>/dev/null | grep -Fq "${package}@"; then
-      rldyour::log "ok" "preserving installed Bun source tool: ${package}"
+  local entry name version
+  for entry in "${BUN_LSP_PACKAGES[@]}"; do
+    name="${entry%@*}"
+    version="${entry##*@}"
+    # Reproducible: skip only when the EXACT pinned version is already installed;
+    # otherwise install the pin so a stale/divergent version is corrected.
+    if bun pm ls -g 2>/dev/null | grep -Fq "${name}@${version}"; then
+      rldyour::log "ok" "pinned Bun source tool present: ${entry}"
     else
-      rldyour::run bun add -g --ignore-scripts "$package"
+      rldyour::run bun add -g --ignore-scripts "$entry"
     fi
   done
 }

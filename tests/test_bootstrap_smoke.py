@@ -239,8 +239,9 @@ def test_desktop_manifests_exclude_project_runtime_and_docker() -> None:
     assert "llvm" in macos  # Homebrew's supported clangd distribution only.
     assert "docker-language-server" in macos
     assert {"chatgpt", "codex-app"}.issubset(gui_casks)
-    assert "dockerfile-language-server-nodejs" in parse_array(
-        file("scripts/ubuntu/install.sh"), "BUN_LSP_PACKAGES"
+    assert any(
+        entry.startswith("dockerfile-language-server-nodejs@")
+        for entry in parse_array(file("scripts/ubuntu/install.sh"), "BUN_LSP_PACKAGES")
     )
     cloak_runtime = parse_array(
         file("scripts/ubuntu/install.sh"), "APT_CLOAK_RUNTIME_PACKAGES"
@@ -550,6 +551,25 @@ def test_python_source_tools_are_version_pinned() -> None:
     assert tools, "PYTHON_SOURCE_TOOLS must be non-empty"
     for entry in tools:
         assert "==" in entry, f"uv source tool must be exact-version pinned: {entry}"
+
+
+def test_bun_lsps_are_version_pinned() -> None:
+    # Every bun-installed language server / source tool must carry an exact
+    # `@<version>` on both platforms (no floating latest) (RVR-P2-003).
+    for platform in ("ubuntu", "macos"):
+        pkgs = parse_array(file(f"scripts/{platform}/install.sh"), "BUN_LSP_PACKAGES")
+        assert pkgs, f"{platform} BUN_LSP_PACKAGES must be non-empty"
+        for entry in pkgs:
+            assert re.search(
+                r"@\d+\.\d+", entry
+            ), f"{platform} bun tool must be exact-version pinned: {entry}"
+    # The two corrected package identities must not regress to the wrong/absent
+    # packages: bare `biome` (a squatter) and `@ansible/language-server` (absent).
+    ubuntu = parse_array(file("scripts/ubuntu/install.sh"), "BUN_LSP_PACKAGES")
+    assert any(e.startswith("@biomejs/biome@") for e in ubuntu)
+    assert not any(e == "biome" or e.startswith("biome@") for e in ubuntu)
+    assert any(e.startswith("@ansible/ansible-language-server@") for e in ubuntu)
+    assert not any(e == "@ansible/language-server" or e.startswith("@ansible/language-server@") for e in ubuntu)
 
 
 def test_remote_code_is_never_piped_directly_to_shell() -> None:
