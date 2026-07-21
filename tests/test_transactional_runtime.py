@@ -439,7 +439,8 @@ def test_harness_delegation_skips_cleanly_when_module_paths_are_unset(
         extra_env={"RLDYOUR_DRY_RUN": "1"},
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "skipping bootstrap-side delegation" in result.stdout
+    assert "self-materializing the pinned codex module" in result.stdout
+    assert "[DRY-RUN] materialize codex module" in result.stdout
     assert not bun_log.exists()
 
 
