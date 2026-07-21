@@ -3291,22 +3291,29 @@ PY
 # path. Idempotent: an already-pinned clean checkout is a no-op and never
 # re-clones; a non-git path at the destination is fail-closed and preserved.
 rldyour::_ensure_pinned_git_checkout() {
-  local url=$1 sha=$2 dir=$3 head
+  local url=$1 sha=$2 dir=$3 head origin
   if [ -e "$dir" ] || [ -L "$dir" ]; then
     if [ -L "$dir" ] || [ ! -d "$dir/.git" ]; then
       rldyour::log "error" "unmanaged non-git path at pinned clone dir; preserved: ${dir}"
       return 1
     fi
+    # A managed checkout must point at the canonical remote: a repo sitting at
+    # the right commit but a different origin is not trusted.
+    origin="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+    if [ "$origin" != "$url" ]; then
+      rldyour::log "error" "pinned clone dir has unexpected origin (${origin:-none} != ${url}); preserved: ${dir}"
+      return 1
+    fi
     head="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
-    if [ "$head" = "$sha" ]; then
+    # Fast path ONLY when the commit matches AND the working tree is pristine.
+    # These bytes are later compiled into the executable plugin bundle, so a
+    # modified tracked file or an untracked drop-in must not be trusted just
+    # because HEAD happens to match the pin.
+    if [ "$head" = "$sha" ] && [ -z "$(git -C "$dir" status --porcelain 2>/dev/null)" ]; then
       return 0
     fi
     git -C "$dir" fetch --quiet --tags origin || {
       rldyour::log "error" "failed to fetch pinned updates for ${dir}"
-      return 1
-    }
-    git -C "$dir" checkout --quiet --detach "$sha" || {
-      rldyour::log "error" "pinned commit ${sha} not found in ${dir}"
       return 1
     }
   else
@@ -3315,11 +3322,22 @@ rldyour::_ensure_pinned_git_checkout() {
       rldyour::log "error" "failed to clone ${url}"
       return 1
     }
-    git -C "$dir" checkout --quiet --detach "$sha" || {
-      rldyour::log "error" "pinned commit ${sha} not found after cloning ${url}"
-      return 1
-    }
   fi
+  # Restore EXACTLY the pinned commit and scrub any tracked or untracked drift so
+  # the materialized bytes are precisely the reviewed commit — never a dirty or
+  # locally substituted worktree.
+  git -C "$dir" checkout --quiet --detach "$sha" || {
+    rldyour::log "error" "pinned commit ${sha} not found in ${dir}"
+    return 1
+  }
+  git -C "$dir" reset --quiet --hard "$sha" || {
+    rldyour::log "error" "failed to reset ${dir} to ${sha}"
+    return 1
+  }
+  git -C "$dir" clean -ffdx --quiet || {
+    rldyour::log "error" "failed to scrub untracked drift in ${dir}"
+    return 1
+  }
 }
 
 # Materialize an OFFLINE antidote plugin bundle shared by macOS and Ubuntu:

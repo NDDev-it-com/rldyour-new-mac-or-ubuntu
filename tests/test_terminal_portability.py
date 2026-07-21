@@ -154,11 +154,11 @@ def test_materializer_installs_pinned_antidote_and_bundle() -> None:
 
 def test_static_bundle_preferred_by_zshrc() -> None:
     template = ZSHRC.read_text(encoding="utf-8")
-    # Startup sources the compiled offline bundle first, antidote load is fallback.
+    # Startup sources the compiled offline bundle; there is no network fallback.
     assert '.zsh_plugins.zsh"' in template
-    idx_static = template.index(".zsh_plugins.zsh")
-    idx_load = template.index("antidote load")
-    assert idx_static < idx_load, "static bundle must be preferred over antidote load"
+    # `antidote load` must never run at shell startup — it resolves/clones plugins
+    # over the network during shell init. A missing bundle fails closed (no plugins).
+    assert "antidote load" not in template
 
 
 def test_runtime_pillars_are_managed_pinned_artifacts() -> None:
@@ -197,7 +197,7 @@ def test_login_shell_change_is_opt_in_only() -> None:
 def test_agent_gate_stays_first_in_zshrc() -> None:
     template = ZSHRC.read_text(encoding="utf-8")
     idx_gate = template.index("_is_agent")
-    idx_plugins = template.index("antidote load")
+    idx_plugins = template.index("Plugins via antidote")
     idx_history = template.index("HISTFILE")
     # Agent gate is defined and evaluated before history, plugins, and tools.
     assert idx_gate < idx_history < idx_plugins

@@ -39,23 +39,14 @@ zstyle ':completion:*' menu no            # fzf-tab replaces the menu
 # ── 4. Plugins via antidote (offline static bundle) ─────────────────────────
 # The installer pre-clones every plugin at its pinned SHA and compiles
 # ~/.zsh_plugins.zsh; sourcing that compiled file is pure `source`/`fpath` with
-# zero network and no antidote runtime. `antidote load` is only the fallback for
-# a host where the static bundle was never materialized.
+# zero network and no antidote runtime. If the compiled bundle is absent we start
+# with NO plugins and fail closed — we never invoke antidote's network loader at
+# startup, because it resolves/clones plugins over the network during shell init.
+# Re-run the bootstrap to (re)materialize the offline bundle.
 if [[ -r "${ZDOTDIR:-$HOME}/.zsh_plugins.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zsh_plugins.zsh"
 else
-  for _anti in \
-    /opt/homebrew/opt/antidote/share/antidote/antidote.zsh \
-    /usr/local/opt/antidote/share/antidote/antidote.zsh \
-    /home/linuxbrew/.linuxbrew/opt/antidote/share/antidote/antidote.zsh \
-    "$HOME/.antidote/antidote.zsh"; do
-    if [[ -r $_anti ]]; then
-      source "$_anti"
-      antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
-      break
-    fi
-  done
-  unset _anti
+  print -u2 "rldyour: ~/.zsh_plugins.zsh not materialized — starting without plugins (offline fail-closed); re-run the bootstrap to compile the pinned plugin bundle."
 fi
 
 # ── 5. Tool inits (zsh-defer, loaded via plugins, keeps prompt instant) ─────
