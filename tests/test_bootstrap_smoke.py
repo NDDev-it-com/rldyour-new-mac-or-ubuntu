@@ -543,6 +543,15 @@ def test_macos_runtime_pillars_have_version_floors() -> None:
         ), f"macOS verify must floor-check {tool}"
 
 
+def test_python_source_tools_are_version_pinned() -> None:
+    # uv-managed source tools must carry an exact `==version` pin so two devices
+    # bootstrapped at different times resolve identical releases (RVR-P2-003).
+    tools = parse_array(file("scripts/ubuntu/install.sh"), "PYTHON_SOURCE_TOOLS")
+    assert tools, "PYTHON_SOURCE_TOOLS must be non-empty"
+    for entry in tools:
+        assert "==" in entry, f"uv source tool must be exact-version pinned: {entry}"
+
+
 def test_remote_code_is_never_piped_directly_to_shell() -> None:
     for path in (ROOT / "scripts").rglob("*.sh"):
         body = path.read_text(encoding="utf-8")
