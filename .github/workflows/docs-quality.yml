@@ -18,3 +18,7 @@ jobs:
     permissions:
       contents: read
     uses: NDDev-it-com/ci-workflows/.github/workflows/docs-quality.yml@2ccb80e96f5771b6a6b4eae63a4f47e232906dc7 # 0.12.0
+    with:
+      # Exclude openai.com: its marketing pages return 403 to link-checkers
+      # (bot-blocked), a false positive — the link is valid in a browser.
+      lychee_args: '--no-progress --max-concurrency 8 --exclude "openai\.com" "**/*.md"'
