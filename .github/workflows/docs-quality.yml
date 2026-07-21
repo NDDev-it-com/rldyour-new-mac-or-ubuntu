@@ -1,0 +1,20 @@
+name: Docs quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: docs-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-quality:
+    name: Docs quality
+    permissions:
+      contents: read
+    uses: NDDev-it-com/ci-workflows/.github/workflows/docs-quality.yml@2ccb80e96f5771b6a6b4eae63a4f47e232906dc7 # 0.12.0
