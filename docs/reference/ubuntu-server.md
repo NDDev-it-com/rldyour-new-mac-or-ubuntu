@@ -247,7 +247,7 @@ SSH reachability still require external VM tests.
 
 ## GitHub Actions and deployment secrets
 
-Use approved NDDev-it-com/nddev-ci-workflows reusable workflows pinned to a
+Use approved NDDev-it-com/ci-workflows reusable workflows pinned to a
 full commit SHA and minimal permissions. Pass only explicitly required secrets;
 avoid broad secrets inheritance.
 

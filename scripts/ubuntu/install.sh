@@ -90,7 +90,18 @@ BUN_LSP_PACKAGES=(
   "@ansible/language-server"
 )
 
-PYTHON_SOURCE_TOOLS=(pyright ruff ty cmake-language-server basedpyright semgrep)
+# Isolated Python source-analysis tools, pinned to exact versions so a device
+# bootstrapped today and one bootstrapped next month resolve the same releases
+# (RVR-P2-003). uv installs the exact pin; a divergent installed version is
+# re-pinned, not silently preserved.
+PYTHON_SOURCE_TOOLS=(
+  "pyright==1.1.411"
+  "ruff==0.15.22"
+  "ty==0.0.61"
+  "cmake-language-server==0.1.11"
+  "basedpyright==1.39.9"
+  "semgrep==1.170.0"
+)
 
 usage() {
   cat <<'EOF'
@@ -543,12 +554,16 @@ ensure_login_shell() {
 
 install_python_source_tools() {
   rldyour::section "Install isolated Python source-analysis tools"
-  local package
-  for package in "${PYTHON_SOURCE_TOOLS[@]}"; do
-    if uv tool list 2>/dev/null | grep -Eq "^${package}([[:space:]]|$)"; then
-      rldyour::log "ok" "preserving installed uv tool: ${package}"
+  local entry name version
+  for entry in "${PYTHON_SOURCE_TOOLS[@]}"; do
+    name="${entry%%==*}"
+    version="${entry#*==}"
+    # Reproducible: skip only when the EXACT pinned version is already installed;
+    # otherwise force-install the pin so a stale/divergent version is corrected.
+    if uv tool list 2>/dev/null | grep -Eq "^${name}[[:space:]]+v?${version//./\\.}([[:space:]]|$)"; then
+      rldyour::log "ok" "pinned uv tool present: ${entry}"
     else
-      rldyour::run uv tool install "$package"
+      rldyour::run uv tool install --force "$entry"
     fi
   done
 }

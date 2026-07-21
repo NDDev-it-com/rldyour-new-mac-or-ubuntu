@@ -532,6 +532,26 @@ def test_browser_commands_are_required_in_verifiers() -> None:
     assert "managed_link" in ubuntu_verify
 
 
+def test_macos_runtime_pillars_have_version_floors() -> None:
+    # macOS provisions these via mutable Homebrew, so it cannot carry an exact
+    # receipt like the Ubuntu standalone path. It must at least fail closed on
+    # gross drift with a conservative version floor, not a silent presence check.
+    verify = file("scripts/macos/verify.sh")
+    for tool in ("uv", "bun", "starship", "atuin", "carapace"):
+        assert re.search(
+            rf"require_cmd_min_version {tool} ", verify
+        ), f"macOS verify must floor-check {tool}"
+
+
+def test_python_source_tools_are_version_pinned() -> None:
+    # uv-managed source tools must carry an exact `==version` pin so two devices
+    # bootstrapped at different times resolve identical releases (RVR-P2-003).
+    tools = parse_array(file("scripts/ubuntu/install.sh"), "PYTHON_SOURCE_TOOLS")
+    assert tools, "PYTHON_SOURCE_TOOLS must be non-empty"
+    for entry in tools:
+        assert "==" in entry, f"uv source tool must be exact-version pinned: {entry}"
+
+
 def test_remote_code_is_never_piped_directly_to_shell() -> None:
     for path in (ROOT / "scripts").rglob("*.sh"):
         body = path.read_text(encoding="utf-8")
@@ -823,12 +843,12 @@ def test_no_gui_mode_is_distinct_from_server_role() -> None:
 
 
 def test_reusable_ci_is_pinned_to_current_ci_workflows_release() -> None:
-    expected = "ac4d1f469f5974741c7449305ffcbd5f05a5a47f"
+    expected = "2ccb80e96f5771b6a6b4eae63a4f47e232906dc7"
     found = 0
     for workflow in (ROOT / ".github" / "workflows").glob("*.yml"):
         body = workflow.read_text(encoding="utf-8")
         for sha in re.findall(
-            r"NDDev-it-com/nddev-ci-workflows/[^@\s]+@([0-9a-f]{40})", body
+            r"NDDev-it-com/ci-workflows/[^@\s]+@([0-9a-f]{40})", body
         ):
             found += 1
             assert sha == expected, f"{workflow.name} has stale central CI pin {sha}"

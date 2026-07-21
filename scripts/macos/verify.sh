@@ -39,6 +39,21 @@ done
 rldyour::require_one_of_cmd required docker-language-server docker-langserver
 
 rldyour::require_cmd_min_version node 20.19 --version
+# Prompt/history/completion + uv/bun pillars are provisioned by Homebrew on
+# macOS. brew tracks upstream and cannot pin an arbitrary patch, so — unlike the
+# Ubuntu path, which installs these as content-addressed pinned standalone
+# artifacts with an exact receipt — macOS cannot carry an exact receipt here.
+# This asymmetry is intentional (brew has no exact-pin mechanism, and the wider
+# LSP formula set has no standalone artifacts). We at least fail closed on gross
+# drift/downgrade with conservative version floors instead of a silent
+# presence-only check; a fresh brew install always satisfies them. Full
+# content-addressed macOS parity (porting these pillars to the standalone
+# artifact path) is a tracked follow-up.
+rldyour::require_cmd_min_version uv 0.11 --version
+rldyour::require_cmd_min_version bun 1.3 --version
+rldyour::require_cmd_min_version starship 1.0 --version
+rldyour::require_cmd_min_version atuin 18.0 --version
+rldyour::require_cmd_min_version carapace 1.0 --version
 # The active harness set (codex, zcode) is owned by its GDS modules. Deep harness
 # proof (exact CLI/app versions, setup catalog) is delegated to each module's own
 # status; here we only require the CLIs to resolve on PATH (checked above).
